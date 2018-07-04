@@ -1868,7 +1868,7 @@ static void ume_load_colorsets() {
 /* OLD CODE FOR UPDATING CHECK BOXES
  *cfgtmp = g_key_file_get_string(ume.cfg, cfg_group, "palette", NULL);
  *if (strcmp(cfgtmp, "linux") == 0) {
- *  gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_palette_linux), TRUE);
+ *  gtk_check_menu_item_set_active(gtk_check_menu_item(item_palette_linux), true);
  *} else if (strcmp(cfgtmp, "gruvbox") == 0) {
  *  gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_palette_gruvbox), TRUE);
  *} else if (strcmp(cfgtmp, "tango") == 0) {
