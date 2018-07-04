@@ -4,8 +4,10 @@ VTE based terminal emulator forked from sakura
 ### Prerequisites
 
 ```
-libvte
-GTK3.0
+libvte >= 0.50
+glib >= 2.40
+gtk >= 3.20
+x11-devel
 ```
 
 ### Installing
