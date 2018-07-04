@@ -1,0 +1,246 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: ume\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-02 21:33+0200\n"
+"PO-Revision-Date: 2018-04-29 13:18+0000\n"
+"Last-Translator: David Gómez <david@pleyades.net>\n"
+"Language-Team: fabio.antunes@hotmail.com <fabio.antunes@hotmail.com>\n"
+"Language: pt\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Launchpad-Export-Date: 2018-04-30 04:34+0000\n"
+"X-Generator: Launchpad (build 18623)\n"
+
+msgid "Print version number"
+msgstr "Mostrar número da versão"
+
+msgid "Select initial terminal font"
+msgstr "Selecionar fonte inicial do terminal"
+
+msgid "Select initial number of tabs"
+msgstr "Selecionar número inicial de abas"
+
+#, fuzzy
+msgid "Set working directory"
+msgstr "Ativar cursor piscando"
+
+msgid "Execute command"
+msgstr "Executar comando"
+
+msgid "Execute command (last option in the command line)"
+msgstr "Executar comando (última opção da linha de comando)"
+
+msgid "Login shell"
+msgstr "Login shell"
+
+msgid "Set window title"
+msgstr "Definir título da janela"
+
+#, fuzzy
+msgid "Set window icon"
+msgstr "Definir título da janela"
+
+msgid "Set columns number"
+msgstr "Definir número de colunas"
+
+msgid "Set rows number"
+msgstr "Definir número de linhas"
+
+msgid "Hold window after execute command"
+msgstr "Mostrar a janela depois de executar o comando"
+
+msgid "Maximize window"
+msgstr "Maximizar janela"
+
+msgid "Fullscreen mode"
+msgstr "Tela cheia"
+
+msgid "Use alternate configuration file"
+msgstr "Usar arquivo de configuração alternativo"
+
+#, fuzzy
+msgid "Select initial colorset"
+msgstr "Selecionar cor"
+
+#, fuzzy
+msgid "Configuration has been modified by another process. Overwrite?"
+msgstr "A configuração foi modificada por outro processo. Sobrescrever?"
+
+msgid ""
+"There are running processes.\n"
+"\n"
+"Do you really want to close Sakura?"
+msgstr ""
+"Existem processos sendo executados.\n"
+"\n"
+"Tem certeza que deseja fechar Sakura?"
+
+msgid "Select font"
+msgstr "Selecionar fonte"
+
+msgid "Set tab name"
+msgstr "Definir nome da aba"
+
+msgid "_Cancel"
+msgstr "_Cancelar"
+
+msgid "_Apply"
+msgstr "_Aplicar"
+
+msgid "New text"
+msgstr "Novo texto"
+
+#, fuzzy
+msgid "Select colors"
+msgstr "Selecionar cor"
+
+msgid "_Select"
+msgstr "_Selecionar"
+
+msgid "Colorset"
+msgstr ""
+
+msgid "Foreground color"
+msgstr "Cor de primeiro plano"
+
+msgid "Background color"
+msgstr "Cor de fundo"
+
+msgid "Cursor color"
+msgstr "Cor do cursor"
+
+#, fuzzy
+msgid "Opacity level (%)"
+msgstr "Nível de opacidade (%):"
+
+msgid "Search"
+msgstr ""
+
+msgid "New window title"
+msgstr "Definir título da janela"
+
+msgid ""
+"There is a running process in this terminal.\n"
+"\n"
+"Do you really want to close it?"
+msgstr ""
+"Existem processos sendo executados nesse terminal.\n"
+"\n"
+"Tem certeza que deseja fechar ele?"
+
+#, fuzzy
+msgid "Open mail"
+msgstr "Abrir link..."
+
+#, fuzzy
+msgid "Open link"
+msgstr "Abrir link..."
+
+#, fuzzy
+msgid "Copy link"
+msgstr "Copiar link..."
+
+msgid "New tab"
+msgstr "Nova aba"
+
+msgid "Set tab name..."
+msgstr "Definir nome da aba..."
+
+msgid "Close tab"
+msgstr "Fechar aba"
+
+msgid "Full screen"
+msgstr "Tela cheia"
+
+msgid "Copy"
+msgstr "Copiar"
+
+msgid "Paste"
+msgstr "Colar"
+
+msgid "Select font..."
+msgstr "Selecionar fonte..."
+
+msgid "Select colors..."
+msgstr "Selecionar cores..."
+
+msgid "Set window title..."
+msgstr "Definir título da janela"
+
+msgid "Options"
+msgstr "Opções"
+
+msgid "More"
+msgstr "Mais"
+
+msgid "Always show tab bar"
+msgstr "Sempre mostrar a barra de abas"
+
+msgid "Tabs at bottom"
+msgstr "Abas em baixo"
+
+msgid "Show close button on tabs"
+msgstr "Exibir o botão fechar nas abas"
+
+msgid "Show scrollbar"
+msgstr "Mostra barra de rolagem"
+
+msgid "Don't show exit dialog"
+msgstr "Não mostrar caixa de diálogo na saída"
+
+#, fuzzy
+msgid "Set urgent bell"
+msgstr "Ativar aviso sonoro"
+
+msgid "Set audible bell"
+msgstr "Ativar aviso sonoro"
+
+msgid "Set blinking cursor"
+msgstr "Ativar cursor piscando"
+
+msgid "Enable bold font"
+msgstr ""
+
+msgid "Stop tab cycling at end tabs"
+msgstr ""
+
+msgid "Disable numbered tabswitch"
+msgstr ""
+
+msgid "Enable focus fade"
+msgstr ""
+
+msgid "Set cursor type"
+msgstr "Definir tipo de cursor"
+
+msgid "Block"
+msgstr "Bloquear"
+
+msgid "Underline"
+msgstr "Sublinhar"
+
+msgid "IBeam"
+msgstr "IBeam"
+
+msgid "Set palette"
+msgstr "Definir paleta"
+
+#, c-format
+msgid "Terminal %d"
+msgstr "Terminal %d"
+
+msgid "Error message"
+msgstr "Mensagem de erro"
+
+#, fuzzy, c-format
+msgid "Cannot change working directory\n"
+msgstr "Ativar cursor piscando"
+
+msgid "- vte-based terminal emulator"
+msgstr "- emulador de terminal baseado no vte"
+
+#, c-format
+msgid "ume version is %s\n"
+msgstr "ume versão %s\n"
