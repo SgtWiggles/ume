@@ -35,7 +35,9 @@ Keybindings support
     Keys:
 
         For example, to set the add tab key to 'T':
-            add_tab_key=T
+		add_tab_key=T
+	To unbind a key, just leave the field blank. For example, to unbind the fullscreen binding:
+		fullscreen_key=
 
 
 	Defaults:	
@@ -59,7 +61,7 @@ Keybindings support
 	Shift + PageDown or Ctrl + Shift + D    -> Move down through scrollback by page
 	Ctrl + Shift + Up or Ctrl + Shift + K   -> Move up through scrollback by line
 	Ctrl + Shift + Down or Ctrl + Shift + J -> Move down through scrollback by line
-	Ctrl + Shift + [F1-F6]           -> Select the colorset for the current tab
+	Ctrl + Shift + [F1-F6]                  -> Select the colorset for the current tab
 
 	You can also increase and decrease the font size in the GTK+ 
 	standard way (not configurable):
