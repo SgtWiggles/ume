@@ -42,6 +42,8 @@
 #include <vte/vte.h>
 #include <wchar.h>
 
+#include <memory>
+
 #include "defaults.h"
 
 #define _(String) gettext(String)
@@ -115,6 +117,12 @@ const char *DEFAULT_PALETTES[NUM_COLORSETS][PALETTE_SIZE] = {
 
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
+
+struct g_free_deleter {
+	template <class T> void operator()(T *data) {
+		g_free((void *)data);
+	}
+};
 
 static struct {
 	GtkWidget *main_window;
@@ -235,39 +243,28 @@ static GQuark term_data_id = 0;
 	g_object_set_qdata_full(G_OBJECT(gtk_notebook_get_nth_page((GtkNotebook *)ume.notebook, page_idx)), term_data_id,    \
 													term, (GDestroyNotify)g_free);
 
-template <class T> inline void ume_set_config(const gchar *key, const gchar *group, T value);
-template <> inline void ume_set_config<gint>(const gchar *key, const gchar *group, gint value) {
+template <class T> inline void ume_set_config(const gchar *group, const gchar *key, T value);
+template <> inline void ume_set_config<gint>(const gchar *group, const gchar *key, gint value) {
 	g_key_file_set_integer(ume.cfg, group, key, value);
 	ume.config_modified = true;
 }
 // TODO find the line where this is getting called.
-template <> inline void ume_set_config<GdkModifierType>(const gchar *key, const gchar *group, GdkModifierType value) {
+template <> inline void ume_set_config<GdkModifierType>(const gchar *group, const gchar *key, GdkModifierType value) {
 	g_key_file_set_integer(ume.cfg, group, key, value);
 	ume.config_modified = true;
 }
-template <> inline void ume_set_config<const gchar *>(const gchar *key, const gchar *group, const gchar *value) {
+template <> inline void ume_set_config<const gchar *>(const gchar *group, const gchar *key, const gchar *value) {
 	g_key_file_set_string(ume.cfg, group, key, value);
 	ume.config_modified = true;
 }
-template <> inline void ume_set_config<gchar *>(const gchar *key, const gchar *group, gchar *value) {
+template <> inline void ume_set_config<gchar *>(const gchar *group, const gchar *key, gchar *value) {
 	g_key_file_set_string(ume.cfg, group, key, value);
 	ume.config_modified = true;
 }
 
-template <> inline void ume_set_config<bool>(const char *key, const char *group, bool value) {
+template <> inline void ume_set_config<bool>(const char *group, const char *key, bool value) {
 	g_key_file_set_boolean(ume.cfg, group, key, value);
 	ume.config_modified = true;
-}
-
-template <class T> inline T ume_get_config(const char *key, const char *group);
-template <> inline gint ume_get_config(const char *key, const char *group) {
-	return g_key_file_get_integer(ume.cfg, group, key, NULL);
-}
-template <> inline gchar *ume_get_config(const char *key, const char *group) {
-	return g_key_file_get_string(ume.cfg, group, key, NULL);
-}
-template <> inline bool ume_get_config(const char *key, const char *group) {
-	return (bool)g_key_file_get_boolean(ume.cfg, group, key, NULL);
 }
 
 /* Spawn callback */
@@ -328,6 +325,7 @@ static void ume_set_tab_label_text(const gchar *, gint page);
 static void ume_set_size(void);
 static void ume_set_keybind(const gchar *, guint);
 static guint ume_get_keybind(const gchar *);
+static guint ume_load_keybind_or(const gchar *, const gchar *, guint);
 static void ume_config_done();
 static void ume_set_colorset(int);
 static void ume_set_colors(void);
@@ -777,7 +775,7 @@ static void ume_increase_font(GtkWidget *widget, void *data) {
 	pango_font_description_set_size(ume.font, new_size);
 	ume_set_font();
 	ume_set_size();
-	ume_set_config("font", cfg_group, pango_font_description_to_string(ume.font));
+	ume_set_config(cfg_group, "font", pango_font_description_to_string(ume.font));
 }
 
 static void ume_decrease_font(GtkWidget *widget, void *data) {
@@ -791,7 +789,7 @@ static void ume_decrease_font(GtkWidget *widget, void *data) {
 		pango_font_description_set_size(ume.font, new_size);
 		ume_set_font();
 		ume_set_size();
-		ume_set_config("font", cfg_group, pango_font_description_to_string(ume.font));
+		ume_set_config(cfg_group, "font", pango_font_description_to_string(ume.font));
 	}
 }
 
@@ -982,7 +980,7 @@ static void ume_font_dialog(GtkWidget *widget, void *data) {
 		ume.font = gtk_font_chooser_get_font_desc(GTK_FONT_CHOOSER(font_dialog));
 		ume_set_font();
 		ume_set_size();
-		ume_set_config("font", cfg_group, pango_font_description_to_string(ume.font));
+		ume_set_config(cfg_group, "font", pango_font_description_to_string(ume.font));
 	}
 
 	gtk_widget_destroy(font_dialog);
@@ -1058,7 +1056,7 @@ static void ume_set_colorset(int cs) {
 	term->colorset = cs;
 	ume.palette = ume.palettes[cs];
 
-	ume_set_config("last_colorset", cfg_group, term->colorset + 1);
+	ume_set_config(cfg_group, "last_colorset", term->colorset + 1);
 
 	ume_set_colors();
 }
@@ -1238,17 +1236,17 @@ static void ume_color_dialog(GtkWidget *widget, void *data) { // TODO add more p
 
 			sprintf(name, "colorset%d_fore", i + 1);
 			cfgtmp = gdk_rgba_to_string(&ume.forecolors[i]);
-			ume_set_config(name, cfg_group, cfgtmp);
+			ume_set_config(cfg_group, name, cfgtmp);
 			g_free(cfgtmp);
 
 			sprintf(name, "colorset%d_back", i + 1);
 			cfgtmp = gdk_rgba_to_string(&ume.backcolors[i]);
-			ume_set_config(name, cfg_group, cfgtmp);
+			ume_set_config(cfg_group, name, cfgtmp);
 			g_free(cfgtmp);
 
 			sprintf(name, "colorset%d_curs", i + 1);
 			cfgtmp = gdk_rgba_to_string(&ume.curscolors[i]);
-			ume_set_config(name, cfg_group, cfgtmp);
+			ume_set_config(cfg_group, name, cfgtmp);
 			g_free(cfgtmp);
 		}
 
@@ -1257,7 +1255,7 @@ static void ume_color_dialog(GtkWidget *widget, void *data) { // TODO add more p
 		 * This is probably what the new user expects, and the experienced user
 		 * hopefully will not mind. */
 		term->colorset = gtk_combo_box_get_active(GTK_COMBO_BOX(set_combo));
-		ume_set_config("last_colorset", cfg_group, term->colorset + 1);
+		ume_set_config(cfg_group, "last_colorset", term->colorset + 1);
 		ume_set_colors();
 	}
 
@@ -1450,14 +1448,14 @@ static void ume_open_mail(GtkWidget *widget, void *data) {
 static void ume_show_first_tab(GtkWidget *widget, void *data) {
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
 		gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), TRUE);
-		ume_set_config("show_always_first_tab", cfg_group, "Yes");
+		ume_set_config(cfg_group, "show_always_first_tab", "Yes");
 		ume.first_tab = true;
 	} else {
 		/* Only hide tabs if the notebook has one page */
 		if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook)) == 1) {
 			gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), FALSE);
 		}
-		ume_set_config("show_always_first_tab", cfg_group, "No");
+		ume_set_config(cfg_group, "show_always_first_tab", "No");
 		ume.first_tab = false;
 	}
 	ume_set_size();
@@ -1467,28 +1465,28 @@ static void ume_show_first_tab(GtkWidget *widget, void *data) {
 static void ume_tabs_on_bottom(GtkWidget *widget, void *data) {
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
 		gtk_notebook_set_tab_pos(GTK_NOTEBOOK(ume.notebook), GTK_POS_BOTTOM);
-		ume_set_config("tabs_on_bottom", cfg_group, TRUE);
+		ume_set_config(cfg_group, "tabs_on_bottom", TRUE);
 	} else {
 		gtk_notebook_set_tab_pos(GTK_NOTEBOOK(ume.notebook), GTK_POS_TOP);
-		ume_set_config("tabs_on_bottom", cfg_group, FALSE);
+		ume_set_config(cfg_group, "tabs_on_bottom", FALSE);
 	}
 }
 
 static void ume_less_questions(GtkWidget *widget, void *data) {
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
 		ume.less_questions = TRUE;
-		ume_set_config("less_questions", cfg_group, TRUE);
+		ume_set_config(cfg_group, "less_questions", TRUE);
 	} else {
 		ume.less_questions = FALSE;
-		ume_set_config("less_questions", cfg_group, FALSE);
+		ume_set_config(cfg_group, "less_questions", FALSE);
 	}
 }
 
 static void ume_show_close_button(GtkWidget *widget, void *data) {
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
-		ume_set_config("closebutton", cfg_group, TRUE);
+		ume_set_config(cfg_group, "closebutton", TRUE);
 	} else {
-		ume_set_config("closebutton", cfg_group, FALSE);
+		ume_set_config(cfg_group, "closebutton", FALSE);
 	}
 }
 
@@ -1506,10 +1504,10 @@ static void ume_show_scrollbar(GtkWidget *widget, void *data) {
 
 	if (!g_key_file_get_boolean(ume.cfg, cfg_group, "scrollbar", NULL)) {
 		ume.show_scrollbar = true;
-		ume_set_config("scrollbar", cfg_group, TRUE);
+		ume_set_config(cfg_group, "scrollbar", TRUE);
 	} else {
 		ume.show_scrollbar = false;
-		ume_set_config("scrollbar", cfg_group, FALSE);
+		ume_set_config(cfg_group, "scrollbar", FALSE);
 	}
 
 	/* Toggle/Untoggle the scrollbar for all tabs */
@@ -1526,9 +1524,9 @@ static void ume_show_scrollbar(GtkWidget *widget, void *data) {
 static void ume_urgent_bell(GtkWidget *widget, void *data) {
 	ume.urgent_bell = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget));
 	if (ume.urgent_bell) {
-		ume_set_config("urgent_bell", cfg_group, "Yes");
+		ume_set_config(cfg_group, "urgent_bell", "Yes");
 	} else {
-		ume_set_config("urgent_bell", cfg_group, "No");
+		ume_set_config(cfg_group, "urgent_bell", "No");
 	}
 }
 
@@ -1541,10 +1539,10 @@ static void ume_audible_bell(GtkWidget *widget, void *data) {
 
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
 		vte_terminal_set_audible_bell(VTE_TERMINAL(term->vte), TRUE);
-		ume_set_config("audible_bell", cfg_group, "Yes");
+		ume_set_config(cfg_group, "audible_bell", "Yes");
 	} else {
 		vte_terminal_set_audible_bell(VTE_TERMINAL(term->vte), FALSE);
-		ume_set_config("audible_bell", cfg_group, "No");
+		ume_set_config(cfg_group, "audible_bell", "No");
 	}
 }
 
@@ -1557,10 +1555,10 @@ static void ume_blinking_cursor(GtkWidget *widget, void *data) {
 
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
 		vte_terminal_set_cursor_blink_mode(VTE_TERMINAL(term->vte), VTE_CURSOR_BLINK_ON);
-		ume_set_config("blinking_cursor", cfg_group, "Yes");
+		ume_set_config(cfg_group, "blinking_cursor", "Yes");
 	} else {
 		vte_terminal_set_cursor_blink_mode(VTE_TERMINAL(term->vte), VTE_CURSOR_BLINK_OFF);
-		ume_set_config("blinking_cursor", cfg_group, "No");
+		ume_set_config(cfg_group, "blinking_cursor", "No");
 	}
 }
 
@@ -1573,20 +1571,20 @@ static void ume_allow_bold(GtkWidget *widget, void *data) {
 
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
 		vte_terminal_set_allow_bold(VTE_TERMINAL(term->vte), TRUE);
-		ume_set_config("allow_bold", cfg_group, "Yes");
+		ume_set_config(cfg_group, "allow_bold", "Yes");
 	} else {
 		vte_terminal_set_allow_bold(VTE_TERMINAL(term->vte), FALSE);
-		ume_set_config("allow_bold", cfg_group, "No");
+		ume_set_config(cfg_group, "allow_bold", "No");
 	}
 }
 
 static void ume_stop_tab_cycling_at_end_tabs(GtkWidget *widget, void *data) {
 
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
-		ume_set_config("stop_tab_cycling_at_end_tabs", cfg_group, "Yes");
+		ume_set_config(cfg_group, "stop_tab_cycling_at_end_tabs", "Yes");
 		ume.stop_tab_cycling_at_end_tabs = TRUE;
 	} else {
-		ume_set_config("stop_tab_cycling_at_end_tabs", cfg_group, "No");
+		ume_set_config(cfg_group, "stop_tab_cycling_at_end_tabs", "No");
 		ume.stop_tab_cycling_at_end_tabs = FALSE;
 	}
 }
@@ -1613,7 +1611,7 @@ static void ume_set_cursor(GtkWidget *widget, void *data) {
 			vte_terminal_set_cursor_shape(VTE_TERMINAL(term->vte), ume.cursor_type);
 		}
 
-		ume_set_config<gint>("cursor_type", cfg_group, ume.cursor_type);
+		ume_set_config<gint>(cfg_group, "cursor_type", ume.cursor_type);
 	}
 }
 
@@ -1801,20 +1799,20 @@ static void ume_conf_changed(GtkWidget *widget, void *data) {
 static void ume_disable_numbered_tabswitch(GtkWidget *widget, void *data) {
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
 		ume.disable_numbered_tabswitch = true;
-		ume_set_config("disable_numbered_tabswitch", cfg_group, TRUE);
+		ume_set_config(cfg_group, "disable_numbered_tabswitch", TRUE);
 	} else {
 		ume.disable_numbered_tabswitch = false;
-		ume_set_config("disable_numbered_tabswitch", cfg_group, FALSE);
+		ume_set_config(cfg_group, "disable_numbered_tabswitch", FALSE);
 	}
 }
 
 static void ume_use_fading(GtkWidget *widget, void *data) { // TODO: what is fade in?
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
 		ume.use_fading = true;
-		ume_set_config("use_fading", cfg_group, TRUE);
+		ume_set_config(cfg_group, "use_fading", TRUE);
 	} else {
 		ume.use_fading = false;
-		ume_set_config("use_fading", cfg_group, FALSE);
+		ume_set_config(cfg_group, "use_fading", FALSE);
 		ume_fade_in();
 		ume_set_colors();
 	}
@@ -1830,7 +1828,7 @@ static void ume_load_colorsets() {
 
 		sprintf(temp_name, "foreground");
 		if (!g_key_file_has_key(ume.cfg, temp_group, temp_name, NULL)) {
-			ume_set_config(temp_name, temp_group, "rgb(192,192,192)");
+			ume_set_config(temp_group, temp_name, "rgb(192,192,192)");
 		}
 		cfgtmp = g_key_file_get_value(ume.cfg, temp_group, temp_name, NULL);
 		gdk_rgba_parse(&ume.forecolors[i], cfgtmp);
@@ -1838,7 +1836,7 @@ static void ume_load_colorsets() {
 
 		sprintf(temp_name, "background");
 		if (!g_key_file_has_key(ume.cfg, temp_group, temp_name, NULL)) {
-			ume_set_config(temp_name, temp_group, "rgba(0,0,0,1)");
+			ume_set_config(temp_group, temp_name, "rgba(0,0,0,1)");
 		}
 		cfgtmp = g_key_file_get_value(ume.cfg, temp_group, temp_name, NULL);
 		gdk_rgba_parse(&ume.backcolors[i], cfgtmp);
@@ -1846,7 +1844,7 @@ static void ume_load_colorsets() {
 
 		sprintf(temp_name, "cursor");
 		if (!g_key_file_has_key(ume.cfg, temp_group, temp_name, NULL)) {
-			ume_set_config(temp_name, temp_group, "rgb(255,255,255)");
+			ume_set_config(temp_group, temp_name, "rgb(255,255,255)");
 		}
 		cfgtmp = g_key_file_get_value(ume.cfg, temp_group, temp_name, NULL);
 		gdk_rgba_parse(&ume.curscolors[i], cfgtmp);
@@ -1855,7 +1853,7 @@ static void ume_load_colorsets() {
 		for (int j = 0; j < PALETTE_SIZE; ++j) {
 			sprintf(temp_name, "color%d", j);
 			if (!g_key_file_has_key(ume.cfg, temp_group, temp_name, NULL)) {
-				ume_set_config(temp_name, temp_group, DEFAULT_PALETTES[i][j]);
+				ume_set_config(temp_group, temp_name, DEFAULT_PALETTES[i][j]);
 			}
 			cfgtmp = g_key_file_get_value(ume.cfg, temp_group, temp_name, NULL);
 			gdk_rgba_parse(&(ume.palettes[i][j]), cfgtmp);
@@ -1868,6 +1866,25 @@ static void ume_load_colorsets() {
 		}
 		ume.set_colorset_keys[i] = ume_get_keybind(temp_name);
 	}
+}
+
+template <class T> inline T ume_config_get(const gchar *group, const gchar *key) {
+	return g_key_file_get_value(ume.cfg, group, key, nullptr);
+}
+template <> inline gint ume_config_get<gint>(const gchar *group, const gchar *key) {
+	return g_key_file_get_integer(ume.cfg, group, key, nullptr);
+}
+template <> inline bool ume_config_get<bool>(const gchar *group, const gchar *key) {
+	return g_key_file_get_boolean(ume.cfg, group, key, nullptr);
+}
+template <> inline gchar *ume_config_get<gchar *>(const gchar *group, const gchar *key) {
+	return g_key_file_get_string(ume.cfg, group, key, nullptr);
+}
+
+template <class T> inline T ume_load_config_or(const gchar *group, const gchar *key, T default_value) {
+	if (!g_key_file_has_key(ume.cfg, group, key, NULL))
+		ume_set_config<T>(group, key, default_value);
+	return ume_config_get<T>(group, key);
 }
 
 static void ume_init() { // TODO break this glorious mega function .
@@ -1919,12 +1936,9 @@ static void ume_init() { // TODO break this glorious mega function .
 	 * doesn't exist, but we have just read it!
 	 */
 	ume_load_colorsets();
+	ume.last_colorset = ume_load_config_or<gint>(cfg_group, "last_colorset", 1);
 
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "last_colorset", NULL)) {
-		ume_set_config("last_colorset", cfg_group, 1);
-	}
-	ume.last_colorset = g_key_file_get_integer(ume.cfg, cfg_group, "last_colorset", NULL);
-	ume.palette = ume.palettes[ume.last_colorset - 1];
+	ume.palette = ume.palettes[ume.last_colorset - 1]; // TODO is this really needed here?
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "scroll_lines", NULL))
 		g_key_file_set_integer(ume.cfg, cfg_group, "scroll_lines", DEFAULT_SCROLL_LINES);
@@ -1935,231 +1949,175 @@ static void ume_init() { // TODO break this glorious mega function .
 	ume.scroll_amount = g_key_file_get_integer(ume.cfg, cfg_group, "scroll_amount", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "font", NULL))
-		ume_set_config("font", cfg_group, DEFAULT_FONT);
-
+		ume_set_config(cfg_group, "font", DEFAULT_FONT);
 	cfgtmp = g_key_file_get_value(ume.cfg, cfg_group, "font", NULL);
 	ume.font = pango_font_description_from_string(cfgtmp);
 	free(cfgtmp);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "show_always_first_tab", NULL)) {
-		ume_set_config("show_always_first_tab", cfg_group, "No");
+		ume_set_config(cfg_group, "show_always_first_tab", "No");
 	}
 	cfgtmp = g_key_file_get_value(ume.cfg, cfg_group, "show_always_first_tab", NULL);
 	ume.first_tab = (strcmp(cfgtmp, "Yes") == 0) ? true : false;
 	free(cfgtmp);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "scrollbar", NULL)) {
-		ume_set_config("scrollbar", cfg_group, FALSE);
+		ume_set_config(cfg_group, "scrollbar", FALSE);
 	}
 	ume.show_scrollbar = g_key_file_get_boolean(ume.cfg, cfg_group, "scrollbar", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "closebutton", NULL)) {
-		ume_set_config("closebutton", cfg_group, TRUE);
+		ume_set_config(cfg_group, "closebutton", TRUE);
 	}
 	ume.show_closebutton = g_key_file_get_boolean(ume.cfg, cfg_group, "closebutton", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "tabs_on_bottom", NULL)) {
-		ume_set_config("tabs_on_bottom", cfg_group, FALSE);
+		ume_set_config(cfg_group, "tabs_on_bottom", FALSE);
 	}
 	ume.tabs_on_bottom = g_key_file_get_boolean(ume.cfg, cfg_group, "tabs_on_bottom", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "less_questions", NULL)) {
-		ume_set_config("less_questions", cfg_group, FALSE);
+		ume_set_config(cfg_group, "less_questions", FALSE);
 	}
 	ume.less_questions = g_key_file_get_boolean(ume.cfg, cfg_group, "less_questions", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "disable_numbered_tabswitch", NULL)) {
-		ume_set_config("disable_numbered_tabswitch", cfg_group, FALSE);
+		ume_set_config(cfg_group, "disable_numbered_tabswitch", FALSE);
 	}
 	ume.disable_numbered_tabswitch = g_key_file_get_boolean(ume.cfg, cfg_group, "disable_numbered_tabswitch", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "use_fading", NULL)) {
-		ume_set_config("use_fading", cfg_group, FALSE);
+		ume_set_config(cfg_group, "use_fading", FALSE);
 	}
 	ume.use_fading = g_key_file_get_boolean(ume.cfg, cfg_group, "use_fading", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "scrollable_tabs", NULL)) {
-		ume_set_config("scrollable_tabs", cfg_group, TRUE);
+		ume_set_config(cfg_group, "scrollable_tabs", TRUE);
 	}
 	ume.scrollable_tabs = g_key_file_get_boolean(ume.cfg, cfg_group, "scrollable_tabs", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "urgent_bell", NULL)) {
-		ume_set_config("urgent_bell", cfg_group, "Yes");
+		ume_set_config(cfg_group, "urgent_bell", "Yes");
 	}
 	cfgtmp = g_key_file_get_value(ume.cfg, cfg_group, "urgent_bell", NULL);
 	ume.urgent_bell = (strcmp(cfgtmp, "Yes") == 0) ? 1 : 0;
 	g_free(cfgtmp);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "audible_bell", NULL)) {
-		ume_set_config("audible_bell", cfg_group, "Yes");
+		ume_set_config(cfg_group, "audible_bell", "Yes");
 	}
 	cfgtmp = g_key_file_get_value(ume.cfg, cfg_group, "audible_bell", NULL);
 	ume.audible_bell = (strcmp(cfgtmp, "Yes") == 0) ? 1 : 0;
 	g_free(cfgtmp);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "blinking_cursor", NULL)) {
-		ume_set_config("blinking_cursor", cfg_group, "No");
+		ume_set_config(cfg_group, "blinking_cursor", "No");
 	}
 	cfgtmp = g_key_file_get_value(ume.cfg, cfg_group, "blinking_cursor", NULL);
 	ume.blinking_cursor = (strcmp(cfgtmp, "Yes") == 0) ? 1 : 0;
 	g_free(cfgtmp);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "stop_tab_cycling_at_end_tabs", NULL)) {
-		ume_set_config("stop_tab_cycling_at_end_tabs", cfg_group, "No");
+		ume_set_config(cfg_group, "stop_tab_cycling_at_end_tabs", "No");
 	}
 	cfgtmp = g_key_file_get_value(ume.cfg, cfg_group, "stop_tab_cycling_at_end_tabs", NULL);
 	ume.stop_tab_cycling_at_end_tabs = (strcmp(cfgtmp, "Yes") == 0) ? 1 : 0;
 	g_free(cfgtmp);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "allow_bold", NULL)) {
-		ume_set_config("allow_bold", cfg_group, "Yes");
+		ume_set_config(cfg_group, "allow_bold", "Yes");
 	}
 	cfgtmp = g_key_file_get_value(ume.cfg, cfg_group, "allow_bold", NULL);
 	ume.allow_bold = (strcmp(cfgtmp, "Yes") == 0) ? 1 : 0;
 	g_free(cfgtmp);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "cursor_type", NULL)) {
-		ume_set_config("cursor_type", cfg_group, "VTE_CURSOR_SHAPE_BLOCK");
+		ume_set_config(cfg_group, "cursor_type", "VTE_CURSOR_SHAPE_BLOCK");
 	}
 	ume.cursor_type = g_key_file_get_integer(ume.cfg, cfg_group, "cursor_type", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "word_chars", NULL)) {
-		ume_set_config("word_chars", cfg_group, DEFAULT_WORD_CHARS);
+		ume_set_config(cfg_group, "word_chars", DEFAULT_WORD_CHARS);
 	}
 	ume.word_chars = g_key_file_get_value(ume.cfg, cfg_group, "word_chars", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "add_tab_accelerator", NULL)) {
-		ume_set_config("add_tab_accelerator", cfg_group, DEFAULT_ADD_TAB_ACCELERATOR);
+		ume_set_config(cfg_group, "add_tab_accelerator", DEFAULT_ADD_TAB_ACCELERATOR);
 	}
 	ume.add_tab_accelerator = g_key_file_get_integer(ume.cfg, cfg_group, "add_tab_accelerator", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "del_tab_accelerator", NULL)) {
-		ume_set_config("del_tab_accelerator", cfg_group, DEFAULT_DEL_TAB_ACCELERATOR);
+		ume_set_config(cfg_group, "del_tab_accelerator", DEFAULT_DEL_TAB_ACCELERATOR);
 	}
 	ume.del_tab_accelerator = g_key_file_get_integer(ume.cfg, cfg_group, "del_tab_accelerator", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "switch_tab_accelerator", NULL)) {
-		ume_set_config("switch_tab_accelerator", cfg_group, DEFAULT_SWITCH_TAB_ACCELERATOR);
+		ume_set_config(cfg_group, "switch_tab_accelerator", DEFAULT_SWITCH_TAB_ACCELERATOR);
 	}
 	ume.switch_tab_accelerator = g_key_file_get_integer(ume.cfg, cfg_group, "switch_tab_accelerator", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "move_tab_accelerator", NULL)) {
-		ume_set_config("move_tab_accelerator", cfg_group, DEFAULT_MOVE_TAB_ACCELERATOR);
+		ume_set_config(cfg_group, "move_tab_accelerator", DEFAULT_MOVE_TAB_ACCELERATOR);
 	}
 	ume.move_tab_accelerator = g_key_file_get_integer(ume.cfg, cfg_group, "move_tab_accelerator", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "copy_accelerator", NULL)) {
-		ume_set_config("copy_accelerator", cfg_group, DEFAULT_COPY_ACCELERATOR);
+		ume_set_config(cfg_group, "copy_accelerator", DEFAULT_COPY_ACCELERATOR);
 	}
 	ume.copy_accelerator = g_key_file_get_integer(ume.cfg, cfg_group, "copy_accelerator", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "scrollbar_accelerator", NULL)) {
-		ume_set_config("scrollbar_accelerator", cfg_group, DEFAULT_SCROLLBAR_ACCELERATOR);
+		ume_set_config(cfg_group, "scrollbar_accelerator", DEFAULT_SCROLLBAR_ACCELERATOR);
 	}
 	ume.scrollbar_accelerator = g_key_file_get_integer(ume.cfg, cfg_group, "scrollbar_accelerator", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "open_url_accelerator", NULL)) {
-		ume_set_config("open_url_accelerator", cfg_group, DEFAULT_OPEN_URL_ACCELERATOR);
+		ume_set_config(cfg_group, "open_url_accelerator", DEFAULT_OPEN_URL_ACCELERATOR);
 	}
 	ume.open_url_accelerator = g_key_file_get_integer(ume.cfg, cfg_group, "open_url_accelerator", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "font_size_accelerator", NULL)) {
-		ume_set_config("font_size_accelerator", cfg_group, DEFAULT_FONT_SIZE_ACCELERATOR);
+		ume_set_config(cfg_group, "font_size_accelerator", DEFAULT_FONT_SIZE_ACCELERATOR);
 	}
 	ume.font_size_accelerator = g_key_file_get_integer(ume.cfg, cfg_group, "font_size_accelerator", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "set_tab_name_accelerator", NULL)) {
-		ume_set_config("set_tab_name_accelerator", cfg_group, DEFAULT_SET_TAB_NAME_ACCELERATOR);
+		ume_set_config(cfg_group, "set_tab_name_accelerator", DEFAULT_SET_TAB_NAME_ACCELERATOR);
 	}
 	ume.set_tab_name_accelerator = g_key_file_get_integer(ume.cfg, cfg_group, "set_tab_name_accelerator", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "search_accelerator", NULL)) {
-		ume_set_config("search_accelerator", cfg_group, DEFAULT_SEARCH_ACCELERATOR);
+		ume_set_config(cfg_group, "search_accelerator", DEFAULT_SEARCH_ACCELERATOR);
 	}
 	ume.search_accelerator = g_key_file_get_integer(ume.cfg, cfg_group, "search_accelerator", NULL);
 
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "add_tab_key", NULL)) {
-		ume_set_keybind("add_tab_key", DEFAULT_ADD_TAB_KEY);
-	}
-	ume.add_tab_key = ume_get_keybind("add_tab_key");
+	// ----- Begin of keybinds -----
+	ume.add_tab_key = ume_load_keybind_or(cfg_group, "add_tab_key", DEFAULT_ADD_TAB_KEY);
+	ume.del_tab_key = ume_load_keybind_or(cfg_group, "del_tab_key", DEFAULT_DEL_TAB_KEY);
+	ume.prev_tab_key = ume_load_keybind_or(cfg_group, "prev_tab_key", DEFAULT_PREV_TAB_KEY);
+	ume.next_tab_key = ume_load_keybind_or(cfg_group, "next_tab_key", DEFAULT_NEXT_TAB_KEY);
+	ume.copy_key = ume_load_keybind_or(cfg_group, "copy_key", DEFAULT_COPY_KEY);
+	ume.paste_key = ume_load_keybind_or(cfg_group, "paste_key", DEFAULT_PASTE_KEY);
+	ume.scrollbar_key = ume_load_keybind_or(cfg_group, "scrollbar_key", DEFAULT_SCROLLBAR_KEY);
+	ume.scroll_up_key = ume_load_keybind_or(cfg_group, "scroll_up_key", DEFAULT_SCROLL_UP_KEY);
+	ume.scroll_down_key = ume_load_keybind_or(cfg_group, "scroll_down_key", DEFAULT_SCROLL_DOWN_KEY);
+	ume.page_up_key = ume_load_keybind_or(cfg_group, "page_up_key", DEFAULT_PAGE_UP_KEY);
+	ume.page_down_key = ume_load_keybind_or(cfg_group, "page_down_key", DEFAULT_PAGE_DOWN_KEY);
+	ume.set_tab_name_key = ume_load_keybind_or(cfg_group, "set_tab_name_key", DEFAULT_SET_TAB_NAME_KEY);
+	ume.search_key = ume_load_keybind_or(cfg_group, "search_key", DEFAULT_SEARCH_KEY);
+	ume.increase_font_size_key = ume_load_keybind_or(cfg_group, "increase_font_size_key", DEFAULT_INCREASE_FONT_SIZE_KEY);
+	ume.decrease_font_size_key = ume_load_keybind_or(cfg_group, "decrease_font_size_key", DEFAULT_DECREASE_FONT_SIZE_KEY);
+	ume.fullscreen_key = ume_load_keybind_or(cfg_group, "fullscreen_key", DEFAULT_FULLSCREEN_KEY);
 
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "del_tab_key", NULL)) {
-		ume_set_keybind("del_tab_key", DEFAULT_DEL_TAB_KEY);
-	}
-	ume.del_tab_key = ume_get_keybind("del_tab_key");
-
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "prev_tab_key", NULL)) {
-		ume_set_keybind("prev_tab_key", DEFAULT_PREV_TAB_KEY);
-	}
-	ume.prev_tab_key = ume_get_keybind("prev_tab_key");
-
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "next_tab_key", NULL)) {
-		ume_set_keybind("next_tab_key", DEFAULT_NEXT_TAB_KEY);
-	}
-	ume.next_tab_key = ume_get_keybind("next_tab_key");
-
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "copy_key", NULL)) {
-		ume_set_keybind("copy_key", DEFAULT_COPY_KEY);
-	}
-	ume.copy_key = ume_get_keybind("copy_key");
-
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "paste_key", NULL)) {
-		ume_set_keybind("paste_key", DEFAULT_PASTE_KEY);
-	}
-	ume.paste_key = ume_get_keybind("paste_key");
-
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "scrollbar_key", NULL)) {
-		ume_set_keybind("scrollbar_key", DEFAULT_SCROLLBAR_KEY);
-	}
-	ume.scrollbar_key = ume_get_keybind("scrollbar_key");
-
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "scroll_up_key", NULL))
-		ume_set_keybind("scroll_up_key", DEFAULT_SCROLL_UP_KEY);
-	ume.scroll_up_key = ume_get_keybind("scroll_up_key");
-
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "scroll_down_key", NULL))
-		ume_set_keybind("scroll_down_key", DEFAULT_SCROLL_DOWN_KEY);
-	ume.scroll_down_key = ume_get_keybind("scroll_down_key");
-
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "page_up_key", NULL))
-		ume_set_keybind("page_up_key", DEFAULT_PAGE_UP_KEY);
-	ume.page_up_key = ume_get_keybind("page_up_key");
-
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "page_down_key", NULL))
-		ume_set_keybind("page_down_key", DEFAULT_PAGE_DOWN_KEY);
-	ume.page_down_key = ume_get_keybind("page_down_key");
-
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "set_tab_name_key", NULL))
-		ume_set_keybind("set_tab_name_key", DEFAULT_SET_TAB_NAME_KEY);
-	ume.set_tab_name_key = ume_get_keybind("set_tab_name_key");
-
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "search_key", NULL)) {
-		ume_set_keybind("search_key", DEFAULT_SEARCH_KEY);
-	}
-	ume.search_key = ume_get_keybind("search_key");
-
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "increase_font_size_key", NULL)) {
-		ume_set_keybind("increase_font_size_key", DEFAULT_INCREASE_FONT_SIZE_KEY);
-	}
-	ume.increase_font_size_key = ume_get_keybind("increase_font_size_key");
-
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "decrease_font_size_key", NULL)) {
-		ume_set_keybind("decrease_font_size_key", DEFAULT_DECREASE_FONT_SIZE_KEY);
-	}
-	ume.decrease_font_size_key = ume_get_keybind("decrease_font_size_key");
-
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "fullscreen_key", NULL)) {
-		ume_set_keybind("fullscreen_key", DEFAULT_FULLSCREEN_KEY);
-	}
-	ume.fullscreen_key = ume_get_keybind("fullscreen_key");
+	// ------ End of keybindings -----
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "set_colorset_accelerator", NULL)) {
-		ume_set_config("set_colorset_accelerator", cfg_group, DEFAULT_SELECT_COLORSET_ACCELERATOR);
+		ume_set_config(cfg_group, "set_colorset_accelerator", DEFAULT_SELECT_COLORSET_ACCELERATOR);
 	}
 	ume.set_colorset_accelerator = g_key_file_get_integer(ume.cfg, cfg_group, "set_colorset_accelerator", NULL);
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "icon_file", NULL)) {
-		ume_set_config("icon_file", cfg_group, ICON_FILE);
+		ume_set_config(cfg_group, "icon_file", ICON_FILE);
 	}
 	ume.icon = g_key_file_get_string(ume.cfg, cfg_group, "icon_file", NULL);
 
@@ -2986,23 +2944,28 @@ static void ume_set_keybind(const gchar *key, guint value) {
 }
 
 static guint ume_get_keybind(const gchar *key) {
-	gchar *value;
 	guint retval = GDK_KEY_VoidSymbol;
+	std::unique_ptr<gchar, g_free_deleter> value(g_key_file_get_string(ume.cfg, cfg_group, key, nullptr));
 
-	value = g_key_file_get_string(ume.cfg, cfg_group, key, NULL);
-	if (value != NULL) {
-		retval = gdk_keyval_from_name(value);
-		g_free(value);
+	if (value != nullptr) {
+		if (strcmp(value.get(), "") == 0)
+			return GDK_KEY_VoidSymbol;
+		retval = gdk_keyval_from_name(value.get());
 	}
 
 	/* For backwards compatibility with integer values */
 	/* If gdk_keyval_from_name fail, it seems to be integer value*/
-	if ((retval == GDK_KEY_VoidSymbol) || (retval == 0)) {
-		retval = g_key_file_get_integer(ume.cfg, cfg_group, key, NULL);
-	}
+	if ((retval == GDK_KEY_VoidSymbol) || (retval == 0))
+		retval = g_key_file_get_integer(ume.cfg, cfg_group, key, nullptr);
 
 	/* Always use uppercase value as keyval */
 	return gdk_keyval_to_upper(retval);
+}
+
+static guint ume_load_keybind_or(const gchar *group, const gchar *key, guint default_value) {
+	if (!g_key_file_has_key(ume.cfg, group, key, nullptr))
+		ume_set_keybind(key, default_value);
+	return ume_get_keybind(key);
 }
 
 static void ume_error(const char *format, ...) {

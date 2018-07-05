@@ -11,7 +11,6 @@
 #define DEFAULT_FONT "Ubuntu Mono,monospace 12"
 #define FONT_MINIMAL_SIZE (PANGO_SCALE * 6)
 #define DEFAULT_WORD_CHARS "-,./?%&#_~:"
-#define DEFAULT_PALETTE "solarized_dark"
 #define TAB_MAX_SIZE 40
 #define TAB_MIN_SIZE 6
 #define FORWARD 1
@@ -36,7 +35,6 @@
 #define DEFAULT_PASTE_KEY GDK_KEY_V
 
 #define DEFAULT_SCROLLBAR_KEY GDK_KEY_S
-
 #define DEFAULT_SCROLL_UP_KEY GDK_KEY_K
 #define DEFAULT_SCROLL_DOWN_KEY GDK_KEY_J
 #define DEFAULT_PAGE_UP_KEY GDK_KEY_U
