@@ -24,6 +24,7 @@ Read [INSTALL](INSTALL) to see how to install ume.
   - [ ] Remove wall of warnings when building
   - [ ] Add shell colors to color menu
   - [ ] Programmatically manipulate ume while it is running
+  - [ ] Better way to configure modifier keys 
 
 ## License
 
