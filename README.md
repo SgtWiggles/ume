@@ -1,5 +1,6 @@
 # ume
 VTE based terminal emulator forked from sakura 
+
 A couple of key differences are:
   - Colors are changable from the config file
   - More rebindable keys
