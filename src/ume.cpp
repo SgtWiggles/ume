@@ -1122,22 +1122,19 @@ static void ume_set_colors() {
 /* Callback from the color change dialog. Updates the contents of that
  * dialog, passed as 'data' from user input. */
 static void ume_color_dialog_changed(GtkWidget *widget, void *data) { // TODO set color dialog
-	int selected = -1;
 	GtkDialog *dialog = (GtkDialog *)data;
 	GtkColorButton *fore_button = g_object_get_data(G_OBJECT(dialog), "buttonfore");
 	GtkColorButton *back_button = g_object_get_data(G_OBJECT(dialog), "buttonback");
 	GtkColorButton *curs_button = g_object_get_data(G_OBJECT(dialog), "buttoncurs");
 	GtkComboBox *set = g_object_get_data(G_OBJECT(dialog), "set_combo");
 	GtkSpinButton *opacity_spin = g_object_get_data(G_OBJECT(dialog), "opacity_spin");
-	GdkRGBA *temp_fore_colors = g_object_get_data(G_OBJECT(dialog), "fore");
-	GdkRGBA *temp_back_colors = g_object_get_data(G_OBJECT(dialog), "back");
-	GdkRGBA *temp_curs_colors = g_object_get_data(G_OBJECT(dialog), "curs");
-	struct term_colors *temp_colors = g_object_get_data(G_OBJECT(dialog), "temp_colors");
-	selected = gtk_combo_box_get_active(set);
+
+	// struct term_colors *temp_colors = g_object_get_data(G_OBJECT(dialog), "temp_colors");
+	int selected = gtk_combo_box_get_active(set);
 
 	GtkColorButton *palette_buttons[PALETTE_SIZE];
 	for (int i = 0; i < PALETTE_SIZE; ++i) {
-		char temp[64];
+		char temp[48];
 		sprintf(temp, "button_color%d", i);
 		palette_buttons[i] = g_object_get_data(G_OBJECT(dialog), temp);
 	}
@@ -1148,25 +1145,27 @@ static void ume_color_dialog_changed(GtkWidget *widget, void *data) { // TODO se
 	 * value, store that. */
 	if ((GtkWidget *)set == widget) {
 		/* Spin opacity is a percentage, convert it*/
-		gint new_opacity = (int)(temp_back_colors[selected].alpha * 100);
-		gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(fore_button), &temp_colors->forecolors[selected]);
-		gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(back_button), &temp_colors->backcolors[selected]);
-		gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(curs_button), &temp_colors->curscolors[selected]);
+		gint new_opacity = (int)(ume.colors.backcolors[selected].alpha * 100);
+		gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(fore_button), &ume.colors.forecolors[selected]);
+		gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(back_button), &ume.colors.backcolors[selected]);
+		gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(curs_button), &ume.colors.curscolors[selected]);
 		for (int i = 0; i < PALETTE_SIZE; ++i) {
-			gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(palette_buttons[i]), &(temp_colors->palettes[selected][i]));
+			gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(palette_buttons[i]), &(ume.colors.palettes[selected][i]));
 		}
 
 		gtk_spin_button_set_value(opacity_spin, new_opacity);
 	} else {
-		gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(fore_button), &temp_colors->forecolors[selected]);
-		gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(back_button), &temp_colors->backcolors[selected]);
-		gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(curs_button), &temp_colors->curscolors[selected]);
+		gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(fore_button), &ume.colors.forecolors[selected]);
+		gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(back_button), &ume.colors.backcolors[selected]);
+		gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(curs_button), &ume.colors.curscolors[selected]);
 		for (int i = 0; i < PALETTE_SIZE; ++i) {
-			gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(palette_buttons[i]), &(temp_colors->palettes[selected][i]));
+			gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(palette_buttons[i]), &(ume.colors.palettes[selected][i]));
 		}
 		gtk_spin_button_update(opacity_spin);
-		temp_back_colors[selected].alpha = gtk_spin_button_get_value(opacity_spin) / 100;
+		ume.colors.backcolors[selected].alpha = gtk_spin_button_get_value(opacity_spin) / 100;
 	}
+
+	ume_set_colorset(selected);
 }
 
 static void ume_color_dialog(GtkWidget *widget, void *data) {
@@ -1187,12 +1186,9 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 	gint response;
 	struct terminal *term;
 	gint page;
-	int cs;
-	int i;
 	gchar combo_text[3];
 
 	struct term_colors temp_colors; // backup of colors of the terminal
-	printf("copied colors\n");
 	temp_colors = ume.colors;
 
 	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
@@ -1218,7 +1214,7 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 	hbox_sets = gtk_box_new(FALSE, 12);
 	set_label = gtk_label_new("Colorset");
 	set_combo = gtk_combo_box_text_new();
-	for (cs = 0; cs < NUM_COLORSETS; cs++) {
+	for (int cs = 0; cs < NUM_COLORSETS; cs++) {
 		g_snprintf(combo_text, 2, "%d", cs + 1);
 		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(set_combo), NULL, combo_text);
 	}
@@ -1292,11 +1288,7 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 
 	g_object_set_data(G_OBJECT(color_dialog), "opacity_spin", opacity_spin);
 
-	// TODO swap this part out with the actual ume colors to allow for real time editing!
-	g_object_set_data(G_OBJECT(color_dialog), "fore", temp_colors.forecolors);
-	g_object_set_data(G_OBJECT(color_dialog), "back", temp_colors.backcolors);
-	g_object_set_data(G_OBJECT(color_dialog), "curs", temp_colors.curscolors);
-	g_object_set_data(G_OBJECT(color_dialog), "temp_colors", &temp_colors);
+	g_object_set_data(G_OBJECT(color_dialog), "colorset", &(ume.colors));
 
 	g_signal_connect(G_OBJECT(buttonfore), "color-set", G_CALLBACK(ume_color_dialog_changed), color_dialog);
 	g_signal_connect(G_OBJECT(buttonback), "color-set", G_CALLBACK(ume_color_dialog_changed), color_dialog);
@@ -1310,12 +1302,12 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 
 	response = gtk_dialog_run(GTK_DIALOG(color_dialog)); // Loop on and update the dialog menu
 
-	if (response == GTK_RESPONSE_ACCEPT) {
-		printf("saving response! color  menu\n");
+	if (response != GTK_RESPONSE_ACCEPT) {
 		ume.colors = temp_colors;
+	} else {
 		// NOTE: config writing goes here, maybe break all this out somewhere else
 		/* Save all colorsets to both the global struct and configuration.*/
-		for (i = 0; i < NUM_COLORSETS; i++) {
+		for (int i = 0; i < NUM_COLORSETS; i++) {
 			char group[20];
 			gchar *cfgtmp;
 			sprintf(group, COLOR_GROUP_KEY, i + 1);
@@ -1346,8 +1338,8 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 		 * hopefully will not mind. */
 		term->colorset = gtk_combo_box_get_active(GTK_COMBO_BOX(set_combo));
 		ume_set_config(cfg_group, "last_colorset", term->colorset + 1);
-		ume_set_colors();
 	}
+	ume_set_colors();
 
 	gtk_widget_destroy(color_dialog);
 }
