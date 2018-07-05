@@ -20,6 +20,7 @@ Read [INSTALL](INSTALL) to see how to install ume.
 
 ### TODO
   - [ ] Clean up code base
+  - [ ] Remove wall of warnings when building
   - [ ] Add shell colors to color menu
   - [ ] Programmatically manipulate ume while it is running
 
