@@ -124,6 +124,13 @@ struct g_free_deleter {
 	}
 };
 
+struct term_colors {
+	GdkRGBA forecolors[NUM_COLORSETS];
+	GdkRGBA backcolors[NUM_COLORSETS];
+	GdkRGBA curscolors[NUM_COLORSETS];
+	GdkRGBA palettes[NUM_COLORSETS][PALETTE_SIZE];
+};
+
 static struct {
 	GtkWidget *main_window;
 	GtkWidget *notebook;
@@ -136,11 +143,7 @@ static struct {
 	glong columns;
 	glong rows;
 
-	GdkRGBA forecolors[NUM_COLORSETS];
-	GdkRGBA backcolors[NUM_COLORSETS];
-	GdkRGBA curscolors[NUM_COLORSETS];
-	GdkRGBA palettes[NUM_COLORSETS][PALETTE_SIZE];
-
+	term_colors colors;
 	const GdkRGBA *palette;
 
 	gint scroll_lines;
@@ -265,6 +268,28 @@ template <> inline void ume_set_config<gchar *>(const gchar *group, const gchar 
 template <> inline void ume_set_config<bool>(const char *group, const char *key, bool value) {
 	g_key_file_set_boolean(ume.cfg, group, key, value);
 	ume.config_modified = true;
+}
+
+template <class T> inline T ume_config_get(const gchar *group, const gchar *key) {
+	return g_key_file_get_value(ume.cfg, group, key, nullptr);
+}
+template <> inline gint ume_config_get<gint>(const gchar *group, const gchar *key) {
+	return g_key_file_get_integer(ume.cfg, group, key, nullptr);
+}
+template <> inline bool ume_config_get<bool>(const gchar *group, const gchar *key) {
+	return g_key_file_get_boolean(ume.cfg, group, key, nullptr);
+}
+template <> inline gchar *ume_config_get<gchar *>(const gchar *group, const gchar *key) {
+	return g_key_file_get_string(ume.cfg, group, key, nullptr);
+}
+template <> inline const gchar *ume_config_get<const gchar *>(const gchar *group, const gchar *key) {
+	return g_key_file_get_string(ume.cfg, group, key, nullptr);
+}
+
+template <class T> inline T ume_load_config_or(const gchar *group, const gchar *key, T default_value) {
+	if (!g_key_file_has_key(ume.cfg, group, key, NULL))
+		ume_set_config<T>(group, key, default_value);
+	return ume_config_get<T>(group, key);
 }
 
 /* Spawn callback */
@@ -1054,7 +1079,7 @@ static void ume_set_colorset(int cs) {
 	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
 	term = ume_get_page_term(ume, page);
 	term->colorset = cs;
-	ume.palette = ume.palettes[cs];
+	ume.palette = ume.colors.palettes[cs];
 
 	ume_set_config(cfg_group, "last_colorset", term->colorset + 1);
 
@@ -1071,21 +1096,20 @@ static void ume_set_colors() {
 		term = ume_get_page_term(ume, i);
 		// SAY("Setting colorset %d", term->colorset+1);
 
-		vte_terminal_set_colors(VTE_TERMINAL(term->vte), &ume.forecolors[term->colorset], &ume.backcolors[term->colorset],
-														ume.palette, PALETTE_SIZE);
-		vte_terminal_set_color_cursor(VTE_TERMINAL(term->vte), &ume.curscolors[term->colorset]);
+		vte_terminal_set_colors(VTE_TERMINAL(term->vte), &ume.colors.forecolors[term->colorset],
+														&ume.colors.backcolors[term->colorset], ume.palette, PALETTE_SIZE);
+		vte_terminal_set_color_cursor(VTE_TERMINAL(term->vte), &ume.colors.curscolors[term->colorset]);
+		vte_terminal_set_color_cursor((VteTerminal *)term->vte, nullptr);
+		vte_terminal_set_color_cursor_foreground((VteTerminal *)term->vte, nullptr);
 	}
 
 	/* Main window opacity must be set. Otherwise vte widget will remain opaque */
-	gtk_widget_set_opacity(ume.main_window, ume.backcolors[term->colorset].alpha);
-
-	vte_terminal_set_color_cursor((VteTerminal *)term->vte, nullptr);
-	vte_terminal_set_color_cursor_foreground((VteTerminal *)term->vte, nullptr);
+	gtk_widget_set_opacity(ume.main_window, ume.colors.backcolors[term->colorset].alpha);
 }
 
 /* Callback from the color change dialog. Updates the contents of that
  * dialog, passed as 'data' from user input. */
-static void ume_color_dialog_changed(GtkWidget *widget, void *data) { // TODO set color dialogue
+static void ume_color_dialog_changed(GtkWidget *widget, void *data) { // TODO set color dialog
 	int selected = -1;
 	GtkDialog *dialog = (GtkDialog *)data;
 	GtkColorButton *fore_button = g_object_get_data(G_OBJECT(dialog), "buttonfore");
@@ -1118,22 +1142,24 @@ static void ume_color_dialog_changed(GtkWidget *widget, void *data) { // TODO se
 	}
 }
 
-static void ume_color_dialog(GtkWidget *widget, void *data) { // TODO add more palettes to this color dialog
+static void ume_color_dialog(GtkWidget *widget, void *data) {
+	// TODO add more palettes to this color dialog
+	// TODO rewrite this garbage.
 	GtkWidget *color_dialog;
 	GtkWidget *color_header;
 	GtkWidget *label1, *label2, *label3, *set_label, *opacity_label;
 	GtkWidget *buttonfore, *buttonback, *buttoncurs, *set_combo, *opacity_spin;
 	GtkAdjustment *spinner_adj;
 	GtkWidget *hbox_fore, *hbox_back, *hbox_curs, *hbox_sets, *hbox_opacity;
+
 	gint response;
 	struct terminal *term;
 	gint page;
 	int cs;
 	int i;
 	gchar combo_text[3];
-	GdkRGBA temp_fore[NUM_COLORSETS];
-	GdkRGBA temp_back[NUM_COLORSETS];
-	GdkRGBA temp_curs[NUM_COLORSETS];
+
+	struct term_colors temp_colors;
 
 	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
 	term = ume_get_page_term(ume, page);
@@ -1171,13 +1197,13 @@ static void ume_color_dialog(GtkWidget *widget, void *data) { // TODO add more p
 	label1 = gtk_label_new(_("Foreground color"));
 	label2 = gtk_label_new(_("Background color"));
 	label3 = gtk_label_new(_("Cursor color"));
-	buttonfore = gtk_color_button_new_with_rgba(&ume.forecolors[term->colorset]);
-	buttonback = gtk_color_button_new_with_rgba(&ume.backcolors[term->colorset]);
-	buttoncurs = gtk_color_button_new_with_rgba(&ume.curscolors[term->colorset]);
+	buttonfore = gtk_color_button_new_with_rgba(&ume.colors.forecolors[term->colorset]);
+	buttonback = gtk_color_button_new_with_rgba(&ume.colors.backcolors[term->colorset]);
+	buttoncurs = gtk_color_button_new_with_rgba(&ume.colors.curscolors[term->colorset]);
 
 	/* Opacity control */
 	hbox_opacity = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
-	spinner_adj = gtk_adjustment_new((ume.backcolors[term->colorset].alpha) * 100, 0.0, 99.0, 1.0, 5.0, 0);
+	spinner_adj = gtk_adjustment_new((ume.colors.backcolors[term->colorset].alpha) * 100, 0.0, 99.0, 1.0, 5.0, 0);
 	opacity_spin = gtk_spin_button_new(GTK_ADJUSTMENT(spinner_adj), 1.0, 0);
 	opacity_label = gtk_label_new(_("Opacity level (%)"));
 	gtk_box_pack_start(GTK_BOX(hbox_opacity), opacity_label, FALSE, FALSE, 12);
@@ -1206,9 +1232,9 @@ static void ume_color_dialog(GtkWidget *widget, void *data) { // TODO add more p
 	g_object_set_data(G_OBJECT(color_dialog), "buttonback", buttonback);
 	g_object_set_data(G_OBJECT(color_dialog), "buttoncurs", buttoncurs);
 	g_object_set_data(G_OBJECT(color_dialog), "opacity_spin", opacity_spin);
-	g_object_set_data(G_OBJECT(color_dialog), "fore", temp_fore);
-	g_object_set_data(G_OBJECT(color_dialog), "back", temp_back);
-	g_object_set_data(G_OBJECT(color_dialog), "curs", temp_curs);
+	g_object_set_data(G_OBJECT(color_dialog), "fore", temp_colors.forecolors);
+	g_object_set_data(G_OBJECT(color_dialog), "back", temp_colors.backcolors);
+	g_object_set_data(G_OBJECT(color_dialog), "curs", temp_colors.curscolors);
 
 	g_signal_connect(G_OBJECT(buttonfore), "color-set", G_CALLBACK(ume_color_dialog_changed), color_dialog);
 	g_signal_connect(G_OBJECT(buttonback), "color-set", G_CALLBACK(ume_color_dialog_changed), color_dialog);
@@ -1217,37 +1243,46 @@ static void ume_color_dialog(GtkWidget *widget, void *data) { // TODO add more p
 	g_signal_connect(G_OBJECT(opacity_spin), "changed", G_CALLBACK(ume_color_dialog_changed), color_dialog);
 
 	for (i = 0; i < NUM_COLORSETS; i++) {
-		temp_fore[i] = ume.forecolors[i];
-		temp_back[i] = ume.backcolors[i];
-		temp_curs[i] = ume.curscolors[i];
+		temp_colors.forecolors[i] = ume.colors.forecolors[i];
+		temp_colors.backcolors[i] = ume.colors.backcolors[i];
+		temp_colors.curscolors[i] = ume.colors.curscolors[i];
 	}
 
-	response = gtk_dialog_run(GTK_DIALOG(color_dialog));
+	response = gtk_dialog_run(GTK_DIALOG(color_dialog)); // Loop on and update the dialog menu
 
-	if (response == GTK_RESPONSE_ACCEPT) { // NOTE: config writing goes here, maybe break all this out somewhere else
+	if (response == GTK_RESPONSE_ACCEPT) {
+		// NOTE: config writing goes here, maybe break all this out somewhere else
 		/* Save all colorsets to both the global struct and configuration.*/
 		for (i = 0; i < NUM_COLORSETS; i++) {
-			char name[20];
+			char group[20];
 			gchar *cfgtmp;
+			sprintf(group, COLOR_GROUP_KEY, i + 1);
 
-			ume.forecolors[i] = temp_fore[i];
-			ume.backcolors[i] = temp_back[i];
-			ume.curscolors[i] = temp_curs[i];
+			ume.colors.forecolors[i] = temp_colors.forecolors[i];
+			ume.colors.backcolors[i] = temp_colors.backcolors[i];
+			ume.colors.curscolors[i] = temp_colors.curscolors[i];
 
-			sprintf(name, "colorset%d_fore", i + 1);
-			cfgtmp = gdk_rgba_to_string(&ume.forecolors[i]);
-			ume_set_config(cfg_group, name, cfgtmp);
+			for (int j = 0; j < PALETTE_SIZE; ++j)
+				ume.colors.palettes[i][j] = temp_colors.palettes[i][j];
+
+			cfgtmp = gdk_rgba_to_string(&ume.colors.forecolors[i]);
+			ume_set_config(group, COLOR_FOREGROUND_KEY, cfgtmp);
 			g_free(cfgtmp);
 
-			sprintf(name, "colorset%d_back", i + 1);
-			cfgtmp = gdk_rgba_to_string(&ume.backcolors[i]);
-			ume_set_config(cfg_group, name, cfgtmp);
+			cfgtmp = gdk_rgba_to_string(&ume.colors.backcolors[i]);
+			ume_set_config(group, COLOR_BACKGROUND_KEY, cfgtmp);
 			g_free(cfgtmp);
 
-			sprintf(name, "colorset%d_curs", i + 1);
-			cfgtmp = gdk_rgba_to_string(&ume.curscolors[i]);
-			ume_set_config(cfg_group, name, cfgtmp);
+			cfgtmp = gdk_rgba_to_string(&ume.colors.curscolors[i]);
+			ume_set_config(group, COLOR_CURSOR_KEY, cfgtmp);
 			g_free(cfgtmp);
+
+			for (int j = 0; j < PALETTE_SIZE; ++j) {
+				char temp_name[20];
+				sprintf(temp_name, COLOR_PALETTE_KEY, j);
+				std::unique_ptr<gchar, g_free_deleter> cfgstr(gdk_rgba_to_string(&ume.colors.palettes[i][j]));
+				ume_set_config(group, temp_name, cfgstr.get());
+			}
 		}
 
 		/* Apply the new colorsets to all tabs
@@ -1271,13 +1306,13 @@ static void ume_fade_out() { // NOTE:  maybe we can make this fade between color
 
 	if (!ume.faded) {
 		ume.faded = true;
-		GdkRGBA x = ume.forecolors[term->colorset];
+		GdkRGBA x = ume.colors.forecolors[term->colorset];
 		// SAY("fade out red %f to %f", x.red, x.red/100.0*FADE_PERCENT);
 		x.red = x.red / 100.0 * FADE_PERCENT;
 		x.green = x.green / 100.0 * FADE_PERCENT;
 		x.blue = x.blue / 100.0 * FADE_PERCENT;
 		if ((x.red >= 0 && x.red <= 1.0) && (x.green >= 0 && x.green <= 1.0) && (x.blue >= 0 && x.blue <= 1.0)) {
-			ume.forecolors[term->colorset] = x;
+			ume.colors.forecolors[term->colorset] = x;
 		} else {
 			SAY("Forecolor value out of range");
 		}
@@ -1293,13 +1328,13 @@ static void ume_fade_in() { // NOTE: maybe we can make this fade between color s
 
 	if (ume.faded) {
 		ume.faded = false;
-		GdkRGBA x = ume.forecolors[term->colorset];
+		GdkRGBA x = ume.colors.forecolors[term->colorset];
 		// SAY("fade in red %f to %f", x.red, x.red/FADE_PERCENT*100.0);
 		x.red = x.red / FADE_PERCENT * 100.0;
 		x.green = x.green / FADE_PERCENT * 100.0;
 		x.blue = x.blue / FADE_PERCENT * 100.0;
 		if ((x.red >= 0 && x.red <= 1.0) && (x.green >= 0 && x.green <= 1.0) && (x.blue >= 0 && x.blue <= 1.0)) {
-			ume.forecolors[term->colorset] = x;
+			ume.colors.forecolors[term->colorset] = x;
 		} else {
 			SAY("Forecolor value out of range");
 		}
@@ -1819,72 +1854,31 @@ static void ume_use_fading(GtkWidget *widget, void *data) { // TODO: what is fad
 }
 
 /******* Functions ********/
-static void ume_load_colorsets() {
+static void ume_load_colorsets() { // TODO maybe make this return a colors object?
 	gchar *cfgtmp = NULL;
 	for (int i = 0; i < NUM_COLORSETS; i++) {
-		char temp_name[32];
-		char temp_group[32];
-		sprintf(temp_group, "colors%d", i + 1);
+		char group[32];
+		sprintf(group, "colors%d", i + 1);
 
-		sprintf(temp_name, "foreground");
-		if (!g_key_file_has_key(ume.cfg, temp_group, temp_name, NULL)) {
-			ume_set_config(temp_group, temp_name, "rgb(192,192,192)");
-		}
-		cfgtmp = g_key_file_get_value(ume.cfg, temp_group, temp_name, NULL);
-		gdk_rgba_parse(&ume.forecolors[i], cfgtmp);
+		cfgtmp = ume_load_config_or(group, COLOR_FOREGROUND_KEY, "rgb(192,192,192)");
+		gdk_rgba_parse(&ume.colors.forecolors[i], cfgtmp);
 		g_free(cfgtmp);
 
-		sprintf(temp_name, "background");
-		if (!g_key_file_has_key(ume.cfg, temp_group, temp_name, NULL)) {
-			ume_set_config(temp_group, temp_name, "rgba(0,0,0,1)");
-		}
-		cfgtmp = g_key_file_get_value(ume.cfg, temp_group, temp_name, NULL);
-		gdk_rgba_parse(&ume.backcolors[i], cfgtmp);
+		cfgtmp = ume_load_config_or(group, COLOR_BACKGROUND_KEY, "rgba(0,0,0,1)");
+		gdk_rgba_parse(&ume.colors.backcolors[i], cfgtmp);
 		g_free(cfgtmp);
 
-		sprintf(temp_name, "cursor");
-		if (!g_key_file_has_key(ume.cfg, temp_group, temp_name, NULL)) {
-			ume_set_config(temp_group, temp_name, "rgb(255,255,255)");
-		}
-		cfgtmp = g_key_file_get_value(ume.cfg, temp_group, temp_name, NULL);
-		gdk_rgba_parse(&ume.curscolors[i], cfgtmp);
+		cfgtmp = ume_load_config_or(group, COLOR_CURSOR_KEY, "rgb(255,255,255)");
+		gdk_rgba_parse(&ume.colors.curscolors[i], cfgtmp);
 		g_free(cfgtmp);
 
 		for (int j = 0; j < PALETTE_SIZE; ++j) {
-			sprintf(temp_name, "color%d", j);
-			if (!g_key_file_has_key(ume.cfg, temp_group, temp_name, NULL)) {
-				ume_set_config(temp_group, temp_name, DEFAULT_PALETTES[i][j]);
-			}
-			cfgtmp = g_key_file_get_value(ume.cfg, temp_group, temp_name, NULL);
-			gdk_rgba_parse(&(ume.palettes[i][j]), cfgtmp);
-			g_free(cfgtmp);
+			char key[32];
+			sprintf(key, COLOR_PALETTE_KEY, j);
+			std::unique_ptr<const gchar, g_free_deleter> cfgstr(ume_load_config_or(group, key, DEFAULT_PALETTES[i][j]));
+			gdk_rgba_parse(&(ume.colors.palettes[i][j]), cfgstr.get());
 		}
-
-		sprintf(temp_name, "colors%d_key", i + 1);
-		if (!g_key_file_has_key(ume.cfg, cfg_group, temp_name, NULL)) {
-			ume_set_keybind(temp_name, cs_keys[i]);
-		}
-		ume.set_colorset_keys[i] = ume_get_keybind(temp_name);
 	}
-}
-
-template <class T> inline T ume_config_get(const gchar *group, const gchar *key) {
-	return g_key_file_get_value(ume.cfg, group, key, nullptr);
-}
-template <> inline gint ume_config_get<gint>(const gchar *group, const gchar *key) {
-	return g_key_file_get_integer(ume.cfg, group, key, nullptr);
-}
-template <> inline bool ume_config_get<bool>(const gchar *group, const gchar *key) {
-	return g_key_file_get_boolean(ume.cfg, group, key, nullptr);
-}
-template <> inline gchar *ume_config_get<gchar *>(const gchar *group, const gchar *key) {
-	return g_key_file_get_string(ume.cfg, group, key, nullptr);
-}
-
-template <class T> inline T ume_load_config_or(const gchar *group, const gchar *key, T default_value) {
-	if (!g_key_file_has_key(ume.cfg, group, key, NULL))
-		ume_set_config<T>(group, key, default_value);
-	return ume_config_get<T>(group, key);
 }
 
 static void ume_init() { // TODO break this glorious mega function .
@@ -1937,8 +1931,7 @@ static void ume_init() { // TODO break this glorious mega function .
 	 */
 	ume_load_colorsets();
 	ume.last_colorset = ume_load_config_or<gint>(cfg_group, "last_colorset", 1);
-
-	ume.palette = ume.palettes[ume.last_colorset - 1]; // TODO is this really needed here?
+	ume.palette = ume.colors.palettes[ume.last_colorset - 1]; // TODO do we really need this here?
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "scroll_lines", NULL))
 		g_key_file_set_integer(ume.cfg, cfg_group, "scroll_lines", DEFAULT_SCROLL_LINES);
@@ -2108,6 +2101,12 @@ static void ume_init() { // TODO break this glorious mega function .
 	ume.increase_font_size_key = ume_load_keybind_or(cfg_group, "increase_font_size_key", DEFAULT_INCREASE_FONT_SIZE_KEY);
 	ume.decrease_font_size_key = ume_load_keybind_or(cfg_group, "decrease_font_size_key", DEFAULT_DECREASE_FONT_SIZE_KEY);
 	ume.fullscreen_key = ume_load_keybind_or(cfg_group, "fullscreen_key", DEFAULT_FULLSCREEN_KEY);
+
+	for (int i = 0; i < NUM_COLORSETS; ++i) {
+		char key_name[32];
+		sprintf(key_name, COLOR_SWITCH_KEY, i + 1);
+		ume.set_colorset_keys[i] = ume_load_keybind_or(cfg_group, key_name, cs_keys[i]);
+	}
 
 	// ------ End of keybindings -----
 

@@ -17,9 +17,12 @@ glib >= 2.40
 gtk >= 3.20
 x11-devel
 ```
+Also requires a C++11 compliant compiler.
   
 ### Installing
-  First clone the repository using:
+
+	First ensure you have all the prequisites installed.
+  Then clone the repository using:
   ```
   git clone https://github.com/SgtWiggles/ume.git
   ```

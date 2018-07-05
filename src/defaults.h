@@ -49,3 +49,10 @@
 #define DEFAULT_SCROLLABLE_TABS TRUE
 
 #define NUM_COLORSETS 6
+
+#define COLOR_GROUP_KEY "colors%d"
+#define COLOR_FOREGROUND_KEY "foreground"
+#define COLOR_BACKGROUND_KEY "background"
+#define COLOR_CURSOR_KEY "cursor"
+#define COLOR_PALETTE_KEY "color%d"
+#define COLOR_SWITCH_KEY "colors%d_key"
