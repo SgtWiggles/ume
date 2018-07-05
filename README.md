@@ -21,7 +21,7 @@ Also requires a C++11 compliant compiler.
   
 ### Installing
 
-	First ensure you have all the prequisites installed.
+  First ensure you have all the prequisites installed.
   Then clone the repository using:
   ```
   git clone https://github.com/SgtWiggles/ume.git
