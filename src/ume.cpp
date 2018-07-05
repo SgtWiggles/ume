@@ -188,13 +188,20 @@ static struct {
 	gint next_tab_key;
 	gint copy_key;
 	gint paste_key;
+
 	gint scrollbar_key;
+	gint scroll_up_key;
+	gint scroll_down_key;
+	gint page_up_key;
+	gint page_down_key;
+
 	gint set_tab_name_key;
 	gint search_key;
 	gint fullscreen_key;
 	gint increase_font_size_key;
 	gint decrease_font_size_key;
 	gint set_colorset_keys[NUM_COLORSETS];
+
 	VteRegex *http_vteregexp, *mail_vteregexp;
 
 	char *argv[3];
@@ -411,13 +418,13 @@ void search(VteTerminal *vte, const char *pattern, bool reverse) {
 
 static int get_scroll_amount(guint keycode, VteTerminal *vte) { // TODO this should really be a lambda
 	glong rows = vte_terminal_get_row_count(vte);
-	if (keycode == ume_tokeycode(DEFAULT_SCROLL_UP_KEY))
+	if (keycode == ume_tokeycode(ume.scroll_up_key))
 		return -ume.scroll_amount;
-	else if (keycode == ume_tokeycode(DEFAULT_SCROLL_DOWN_KEY))
+	else if (keycode == ume_tokeycode(ume.scroll_down_key))
 		return ume.scroll_amount;
-	else if (keycode == ume_tokeycode(DEFAULT_SCROLL_PAGE_UP_KEY))
+	else if (keycode == ume_tokeycode(ume.page_up_key))
 		return -(rows - 1);
-	else if (keycode == ume_tokeycode(DEFAULT_SCROLL_PAGE_DOWN_KEY))
+	else if (keycode == ume_tokeycode(ume.page_down_key))
 		return rows - 1;
 	return 0;
 }
@@ -570,10 +577,10 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	}
 
 	/* F11 (fullscreen) pressed */
-	// if (keycode == ume_tokeycode(ume.fullscreen_key)) {
-	//	ume_fullscreen(NULL, NULL);
-	//	return TRUE;
-	//}
+	if (keycode == ume_tokeycode(ume.fullscreen_key)) {
+		ume_fullscreen(NULL, NULL);
+		return TRUE;
+	}
 
 	/* Change in colorset */
 	if ((event->state & ume.set_colorset_accelerator) == ume.set_colorset_accelerator) {
@@ -2106,9 +2113,24 @@ static void ume_init() { // TODO break this glorious mega function .
 	}
 	ume.scrollbar_key = ume_get_keybind("scrollbar_key");
 
-	if (!g_key_file_has_key(ume.cfg, cfg_group, "set_tab_name_key", NULL)) {
+	if (!g_key_file_has_key(ume.cfg, cfg_group, "scroll_up_key", NULL))
+		ume_set_keybind("scroll_up_key", DEFAULT_SCROLL_UP_KEY);
+	ume.scroll_up_key = ume_get_keybind("scroll_up_key");
+
+	if (!g_key_file_has_key(ume.cfg, cfg_group, "scroll_down_key", NULL))
+		ume_set_keybind("scroll_down_key", DEFAULT_SCROLL_DOWN_KEY);
+	ume.scroll_down_key = ume_get_keybind("scroll_down_key");
+
+	if (!g_key_file_has_key(ume.cfg, cfg_group, "page_up_key", NULL))
+		ume_set_keybind("page_up_key", DEFAULT_PAGE_UP_KEY);
+	ume.page_up_key = ume_get_keybind("page_up_key");
+
+	if (!g_key_file_has_key(ume.cfg, cfg_group, "page_down_key", NULL))
+		ume_set_keybind("page_down_key", DEFAULT_PAGE_DOWN_KEY);
+	ume.page_down_key = ume_get_keybind("page_down_key");
+
+	if (!g_key_file_has_key(ume.cfg, cfg_group, "set_tab_name_key", NULL))
 		ume_set_keybind("set_tab_name_key", DEFAULT_SET_TAB_NAME_KEY);
-	}
 	ume.set_tab_name_key = ume_get_keybind("set_tab_name_key");
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "search_key", NULL)) {
