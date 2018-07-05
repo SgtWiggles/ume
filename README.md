@@ -1,5 +1,9 @@
 # ume
 VTE based terminal emulator forked from sakura 
+A couple of key differences are:
+  - Colors are changable from the config file
+  - Rebindable keys for scrolling
+  - Config colors are compatible with termite
 
 ### Prerequisites
 
@@ -14,6 +18,10 @@ x11-devel
 
 Read [INSTALL](INSTALL) to see how to install ume.
 
+### TODO
+  - [ ] Clean up code base
+  - [ ] Add shell colors to color menu
+  - [ ] Programmatically manipulate ume while it is running
 
 ## License
 
