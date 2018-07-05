@@ -18,9 +18,9 @@ x11-devel
 Read [INSTALL](INSTALL) to see how to install ume.
 
 ### TODO
-  - [] Clean up code base
-  - [] Add shell colors to color menu
-  - [] Programmatically manipulate ume while it is running
+  - [ ] Clean up code base
+  - [ ] Add shell colors to color menu
+  - [ ] Programmatically manipulate ume while it is running
 
 ## License
 
