@@ -3,6 +3,7 @@ VTE based terminal emulator forked from sakura
 A couple of key differences are:
   - Colors are changable from the config file
   - Rebindable keys for scrolling
+  - Config colors are compatible with termite
 
 ### Prerequisites
 
