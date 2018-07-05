@@ -1190,6 +1190,7 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 
 	struct term_colors temp_colors; // backup of colors of the terminal
 	temp_colors = ume.colors;
+	int prev_colorset = ume.last_colorset - 1;
 
 	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
 	term = ume_get_page_term(ume, page);
@@ -1304,6 +1305,7 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 
 	if (response != GTK_RESPONSE_ACCEPT) {
 		ume.colors = temp_colors;
+		ume_set_colorset(prev_colorset);
 	} else {
 		// NOTE: config writing goes here, maybe break all this out somewhere else
 		/* Save all colorsets to both the global struct and configuration.*/
@@ -1338,8 +1340,8 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 		 * hopefully will not mind. */
 		term->colorset = gtk_combo_box_get_active(GTK_COMBO_BOX(set_combo));
 		ume_set_config(cfg_group, "last_colorset", term->colorset + 1);
+		ume_set_colors();
 	}
-	ume_set_colors();
 
 	gtk_widget_destroy(color_dialog);
 }
@@ -1978,7 +1980,7 @@ static void ume_init() { // TODO break this glorious mega function .
 	 */
 	ume_load_colorsets();
 	ume.last_colorset = ume_load_config_or<gint>(cfg_group, "last_colorset", 1);
-	ume.palette = ume.colors.palettes[ume.last_colorset - 1]; // TODO do we really need this here?
+	ume.palette = ume.colors.palettes[ume.last_colorset - 1];
 
 	if (!g_key_file_has_key(ume.cfg, cfg_group, "scroll_lines", NULL))
 		g_key_file_set_integer(ume.cfg, cfg_group, "scroll_lines", DEFAULT_SCROLL_LINES);
