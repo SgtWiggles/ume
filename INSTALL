@@ -1,11 +1,9 @@
 Installing ume
 ===============
 
-* How to compile and install this beast ?
-
+* How to compile and install?
 	$ cmake . 
-	$ make
-	$ su -c 'make install'
+	$ sudo make install
 
 	To install ume with a different prefix, cmake needs to be invoked with the proper environment 
 	variables, so to install ume in /usr, you must type:

@@ -520,12 +520,12 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	}
 
 	/* Show scrollbar keybinding pressed */
-	// if ((event->state & ume.scrollbar_accelerator) == ume.scrollbar_accelerator) {
-	//	if (keycode == ume_tokeycode(ume.scrollbar_key)) {
-	//		ume_show_scrollbar(NULL, NULL);
-	//		return TRUE;
-	//	}
-	//}
+	if ((event->state & ume.scrollbar_accelerator) == ume.scrollbar_accelerator) {
+		if (keycode == ume_tokeycode(ume.scrollbar_key)) {
+			ume_show_scrollbar(NULL, NULL);
+			return TRUE;
+		}
+	}
 
 	/* Set tab name keybinding pressed */
 	if ((event->state & ume.set_tab_name_accelerator) == ume.set_tab_name_accelerator) {
@@ -1779,7 +1779,6 @@ static void ume_closebutton_clicked(GtkWidget *widget, void *data) {
 				ume_destroy();
 		}
 	} else { /* No processes, hell with tab */
-
 		ume_del_tab(page);
 
 		if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook)) == 0)
@@ -1846,7 +1845,6 @@ static void ume_load_colorsets() {
 		gdk_rgba_parse(&ume.curscolors[i], cfgtmp);
 		g_free(cfgtmp);
 
-		// TODO load color sets here
 		for (int j = 0; j < PALETTE_SIZE; ++j) {
 			sprintf(temp_name, "color%d", j);
 			if (!g_key_file_has_key(ume.cfg, temp_group, temp_name, NULL)) {
@@ -1864,26 +1862,6 @@ static void ume_load_colorsets() {
 		ume.set_colorset_keys[i] = ume_get_keybind(temp_name);
 	}
 }
-
-/* OLD CODE FOR UPDATING CHECK BOXES
- *cfgtmp = g_key_file_get_string(ume.cfg, cfg_group, "palette", NULL);
- *if (strcmp(cfgtmp, "linux") == 0) {
- *  gtk_check_menu_item_set_active(gtk_check_menu_item(item_palette_linux), true);
- *} else if (strcmp(cfgtmp, "gruvbox") == 0) {
- *  gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_palette_gruvbox), TRUE);
- *} else if (strcmp(cfgtmp, "tango") == 0) {
- *  gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_palette_tango), TRUE);
- *} else if (strcmp(cfgtmp, "xterm") == 0) {
- *  gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_palette_xterm), TRUE);
- *} else if (strcmp(cfgtmp, "rxvt") == 0) {
- *  gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_palette_rxvt), TRUE);
- *} else if (strcmp(cfgtmp, "solarized_dark") == 0) {
- *  gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_palette_solarized_dark), TRUE);
- *} else {
- *  gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_palette_solarized_light), TRUE);
- *}
- *g_free(cfgtmp);
- */
 
 static void ume_init() { // TODO break this glorious mega function .
 	char *configdir = NULL;
@@ -2245,14 +2223,11 @@ static void ume_init() { // TODO break this glorious mega function .
 	}
 
 	/* These options are exclusive */
-	// TODO readd into the system
-	/*
-	 *if (option_fullscreen) {
-	 *  ume_fullscreen(NULL, NULL);
-	 *} else if (option_maximize) {
-	 *  gtk_window_maximize(GTK_WINDOW(ume.main_window));
-	 *}
-	 */
+	if (option_fullscreen) {
+		ume_fullscreen(NULL, NULL);
+	} else if (option_maximize) {
+		gtk_window_maximize(GTK_WINDOW(ume.main_window));
+	}
 
 	ume.label_count = 1;
 	ume.fullscreen = FALSE;

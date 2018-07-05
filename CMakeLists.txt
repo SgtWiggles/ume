@@ -1,7 +1,7 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 2.4 FATAL_ERROR)
 CMAKE_POLICY(SET CMP0005 NEW)
 PROJECT (ume)
-SET (AUTHOR "David Gómez Espinosa" INTERNAL "Author")
+SET (AUTHOR "Niran Pon" INTERNAL "Author")
 SET (VERSION "0.1.0")
 
 
@@ -31,8 +31,6 @@ IF (NOT X11_FOUND)
 	MESSAGE(FATAL_ERROR "You don't seem to have x11 development libraries installed...")
 ENDIF (NOT X11_FOUND)
 
-FIND_PROGRAM(POD2MAN pod2man)	
-MESSAGE ("pod2man executable is" ${POD2MAN})	
 
 ADD_DEFINITIONS (-DVERSION="${VERSION}")
 ADD_DEFINITIONS (-DDATADIR="${CMAKE_INSTALL_PREFIX}/share")
@@ -51,28 +49,16 @@ LINK_DIRECTORIES (${GTK_LIBRARY_DIRS} ${VTE_LIBRARY_DIRS} ${X11_LIBRARY_DIRS})
 LINK_LIBRARIES (${GTK_LIBRARIES} ${VTE_LIBRARIES} ${X11_LIBRARIES} m)
 ADD_EXECUTABLE (ume src/ume.cpp)
 
-ADD_SUBDIRECTORY (po)
 
 INSTALL (TARGETS ume RUNTIME DESTINATION bin)	
 INSTALL (FILES ume.desktop DESTINATION share/applications)
 INSTALL (FILES terminal-tango.svg DESTINATION share/pixmaps)
-IF (POD2MAN)	
-	INSTALL (FILES ${ume_BINARY_DIR}/ume.1 DESTINATION share/man/man1)	
-ENDIF (POD2MAN)
 INSTALL (FILES INSTALL DESTINATION share/doc/ume)	
-
-FILE (GLOB MO_FILES po/*.mo)
 
 SET_DIRECTORY_PROPERTIES (PROPERTIES
 	ADDITIONAL_MAKE_CLEAN_FILES "${MO_FILES};po/ume.pot")
 SET (EXECUTABLE_OUTPUT_PATH src)
 
 ADD_CUSTOM_TARGET (distclean
-	rm -f Makefile cmake_install.cmake CMakeCache.txt install_manifest.txt ume.1
-	COMMAND rm -f po/*.mo po/ume.pot po/Makefile po/cmake_install.cmake 
-	COMMAND rm -rf CMakeFiles po/CMakeFiles)
+	rm -f Makefile cmake_install.cmake CMakeCache.txt install_manifest.txt ume.1)
 
-IF (POD2MAN) 
-ADD_CUSTOM_TARGET(man ALL
-	COMMAND ${POD2MAN} -u --section=1 --release=${VERSION} --center '' ${ume_SOURCE_DIR}/ume.pod ume.1)
-ENDIF (POD2MAN)	
