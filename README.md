@@ -6,18 +6,46 @@ A couple of key differences are:
   - More rebindable keys
   - Config colors are compatible with termite
 
-### Prerequisites
 
+
+### Prerequisites
+ume requires the following libraries:
 ```
-libvte >= 0.50
+vte >= 2.91
+vte-devel >= 0.50
 glib >= 2.40
 gtk >= 3.20
 x11-devel
 ```
-
+  
 ### Installing
-
-Read [INSTALL](INSTALL) to see how to install ume.
+  First clone the repository using:
+  ```
+  git clone https://github.com/SgtWiggles/ume.git
+  ```
+  Then to build and install the project use:
+  ```
+  cd ume
+  cmake .
+  sudo make install
+  ```
+  To install ume at a different path, CMake must be given the proper environment variables.
+  For example to install ume at `/usr` you would call
+  ```
+  cmake -DCMAKE_INSTALL_PREFIX=/usr .
+  ```
+  
+  Use `CMAKE_BUILD_TYPE=Debug` if you need debug symbols. Default build is "Release".
+  
+  
+  For further instructions view [INSTALL](INSTALL) to see how to install ume.
+ 
+### User Guide
+###### Configuration Settings
+  | Key | Default | Description |
+  | --- | --- | --- |
+  | `last_color_set` | `1` | The last color set used by ume |
+(UNDER CONSTRUCTION)
 
 ### TODO
   - [ ] Clean up code base
