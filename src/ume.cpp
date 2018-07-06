@@ -1,9 +1,6 @@
 /*******************************************************************************
- *  Filename: ume.c
+ *  Filename: ume.cpp
  *  Description: VTE-based terminal emulator
- *
- *           Copyright (C) 2006-2012  David Gómez <david@pleyades.net>
- *           Copyright (C) 2008       Hong Jen Yee (PCMan) <pcman.tw@gmail.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -45,7 +42,7 @@
 #include <array>
 #include <memory>
 
-#include "config.h"
+// #include "config.h"
 #include "defaults.h"
 
 #define _(String) gettext(String)
@@ -125,6 +122,12 @@ struct g_free_deleter {
 	}
 };
 
+struct g_object_unref_deleter {
+	template <class T> void operator()(T *data) {
+		g_object_unref((void *)data);
+	}
+};
+
 struct term_colors {
 	GdkRGBA forecolors[NUM_COLORSETS];
 	GdkRGBA backcolors[NUM_COLORSETS];
@@ -151,7 +154,10 @@ static struct {
 	char *current_match;
 
 	GKeyFile *cfg_file;
-	// config_t config;
+
+	gulong cfg_signal_id = 0;
+	GFileMonitor *cfg_monitor;
+
 	// settings begin
 	gint scroll_lines;
 	gint scroll_amount;
@@ -180,6 +186,7 @@ static struct {
 	bool faded;											 /* Fading state */
 	bool use_fading;
 	bool scrollable_tabs;
+	bool reload_config_on_modify; /* When the config files gets modified reload it? */
 
 	GtkWidget *item_copy_link; /* We include here only the items which need to be hidden */
 	GtkWidget *item_open_link;
@@ -380,6 +387,7 @@ static void ume_set_colors(void);
 static guint ume_tokeycode(guint key);
 static void ume_fade_in(void);
 static void ume_fade_out(void);
+static void ume_reload_config_file();
 
 /* Globals for command line parameters */
 static const char *option_font;
@@ -937,9 +945,9 @@ static void ume_config_done() {
 			response = gtk_dialog_run(GTK_DIALOG(dialog));
 			gtk_widget_destroy(dialog);
 
-			if (response == GTK_RESPONSE_YES) {
+			if (response == GTK_RESPONSE_YES)
 				overwrite = true;
-			} else
+			else
 				overwrite = false;
 		}
 
@@ -1156,7 +1164,6 @@ static GtkWidget *create_color_button(GtkWidget *dialog, const gchar *label, con
 	return hbox;
 }
 
-// TODO finish this function
 static GtkWidget *ume_create_color_dialog(GtkWidget *widget, void *data) {
 	GtkWidget *color_dialog = gtk_dialog_new_with_buttons(_("Select colors"), GTK_WINDOW(ume.main_window),
 																												GTK_DIALOG_MODAL | GTK_DIALOG_USE_HEADER_BAR, _("_Cancel"),
@@ -1786,7 +1793,13 @@ static void ume_closebutton_clicked(GtkWidget *widget, void *data) {
 /* Callback called when ume configuration file is modified by an external process */
 // TODO create setting which on modification it reads from the file!
 static void ume_conf_changed(GtkWidget *widget, void *data) {
+	SAY("Config externally modified");
 	ume.externally_modified = true;
+	if (ume.reload_config_on_modify) {
+		ume_reload_config_file();
+		SAY("Reloading config, last_colorset is %d", ume.last_colorset - 1);
+		ume_set_colorset(ume.last_colorset - 1);
+	}
 }
 
 static void ume_disable_numbered_tabswitch(GtkWidget *widget, void *data) {
@@ -1799,7 +1812,7 @@ static void ume_disable_numbered_tabswitch(GtkWidget *widget, void *data) {
 	}
 }
 
-static void ume_use_fading(GtkWidget *widget, void *data) { // TODO: what is fade in?
+static void ume_use_fading(GtkWidget *widget, void *data) {
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
 		ume.use_fading = true;
 		ume_set_config(cfg_group, "use_fading", TRUE);
@@ -1839,9 +1852,15 @@ static term_colors ume_load_colorsets() {
 	return colors;
 }
 
-static void ume_init() { // TODO break this glorious mega function .
+static void ume_reload_config_file() {
 	char *configdir = NULL;
 	int i;
+
+	if (ume.cfg_signal_id != 0) {
+		g_key_file_free(ume.cfg_file);
+		g_signal_handler_disconnect(ume.cfg_monitor, ume.cfg_signal_id);
+		g_file_monitor_cancel(ume.cfg_monitor);
+	}
 
 	term_data_id = g_quark_from_static_string("ume_term");
 
@@ -1874,11 +1893,11 @@ static void ume_init() { // TODO break this glorious mega function .
 	}
 
 	/* Add GFile monitor to control file external changes */
-	GFile *cfgfile = g_file_new_for_path(ume.configfile);
-	GFileMonitor *mon_cfgfile = g_file_monitor_file(cfgfile, 0, NULL, NULL);
-	g_signal_connect(G_OBJECT(mon_cfgfile), "changed", G_CALLBACK(ume_conf_changed), NULL);
+	GFile *cfgfile = cfgfile = g_file_new_for_path(ume.configfile);
+	ume.cfg_monitor = g_file_monitor_file(cfgfile, 0, NULL, NULL);
+	ume.cfg_signal_id = g_signal_connect(G_OBJECT(ume.cfg_monitor), "changed", G_CALLBACK(ume_conf_changed), NULL);
 	// TODO use these to set colorscheme across all files
-
+	SAY("Reloading config file");
 	gchar *cfgtmp = NULL;
 
 	/* We can safely ignore errors from g_key_file_get_value(), since if the
@@ -1887,6 +1906,7 @@ static void ume_init() { // TODO break this glorious mega function .
 	 * too. I think we can: the only possible error is that the config file
 	 * doesn't exist, but we have just read it!
 	 */
+
 	ume.colors = ume_load_colorsets();
 	ume.last_colorset = ume_load_config_or<gint>(cfg_group, "last_colorset", 1);
 	ume.palette = ume.colors.palettes[ume.last_colorset - 1];
@@ -2090,10 +2110,15 @@ static void ume_init() { // TODO break this glorious mega function .
 
 	/* set default title pattern from config or NULL */
 	ume.tab_default_title = g_key_file_get_string(ume.cfg_file, cfg_group, "tab_default_title", NULL);
+	ume.reload_config_on_modify = ume_load_config_or(cfg_group, "reload_config_on_modify", false);
+}
+
+static void ume_init() { // TODO break this glorious mega function .
+
+	ume_reload_config_file();
 
 	/* Use always GTK header bar*/
 	g_object_set(gtk_settings_get_default(), "gtk-dialogs-use-header", TRUE, NULL);
-
 	ume.provider = gtk_css_provider_new();
 
 	ume.main_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -2149,7 +2174,7 @@ static void ume_init() { // TODO break this glorious mega function .
 
 	/* Add datadir path to icon name and set icon */
 	gchar *icon_path;
-	error = NULL;
+	GError *error = NULL;
 	if (option_icon) {
 		icon_path = g_strdup_printf("%s", option_icon);
 	} else {
