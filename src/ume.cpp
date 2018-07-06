@@ -51,7 +51,7 @@
 #define N_(String) (String)
 #define GETTEXT_PACKAGE "ume"
 
-// TODO template function
+// TODO template and compile time inline?
 #define SAY(format, ...)                                                                                               \
 	do {                                                                                                                 \
 		if (strcmp("Debug", BUILDTYPE) == 0) {                                                                             \
@@ -256,6 +256,7 @@ static int cs_keys[NUM_COLORSETS] = {GDK_KEY_F1, GDK_KEY_F2, GDK_KEY_F3, GDK_KEY
 const char cfg_group[] = "ume";
 
 static GQuark term_data_id = 0;
+// Maybe template this?
 #define ume_get_page_term(ume, page_idx)                                                                               \
 	(struct terminal *)g_object_get_qdata(G_OBJECT(gtk_notebook_get_nth_page((GtkNotebook *)ume.notebook, page_idx)),    \
 																				term_data_id);
@@ -965,13 +966,6 @@ static void ume_config_done() {
 }
 
 static gboolean ume_delete_event(GtkWidget *widget, void *data) {
-	// struct terminal *term; //TODO remove?
-	// GtkWidget *dialog;
-	// gint response;
-	// gint npages;
-	// gint i;
-	// pid_t pgid;
-
 	ume_config_done();
 	return FALSE;
 }
@@ -1136,14 +1130,12 @@ static void ume_color_dialog_changed(GtkWidget *widget, void *data) {
 		ume.colors.backcolors[selected].alpha = gtk_spin_button_get_value(opacity_spin) / 100;
 	}
 
+	ume.last_colorset = selected + 1;
 	ume_set_colorset(selected);
 }
 
+// TODO finish this function
 static GtkWidget *ume_create_color_dialog(GtkWidget *widget, void *data) {
-}
-
-static void ume_color_dialog(GtkWidget *widget, void *data) {
-	// TODO rewrite this garbage.
 	GtkWidget *color_dialog;
 	GtkWidget *color_header;
 	GtkWidget *label1, *label2, *label3, *set_label, *opacity_label;
@@ -1156,17 +1148,9 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 	GtkAdjustment *spinner_adj;
 	GtkWidget *hbox_fore, *hbox_back, *hbox_curs, *hbox_sets, *hbox_opacity;
 
-	gint response;
-	struct terminal *term;
-	gint page;
 	gchar combo_text[3];
-
-	struct term_colors temp_colors; // backup of colors of the terminal
-	temp_colors = ume.colors;
-	int prev_colorset = ume.last_colorset - 1;
-
-	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
-	term = ume_get_page_term(ume, page);
+	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
+	struct terminal *term = ume_get_page_term(ume, page);
 
 	color_dialog = gtk_dialog_new_with_buttons(_("Select colors"), GTK_WINDOW(ume.main_window),
 																						 GTK_DIALOG_MODAL | GTK_DIALOG_USE_HEADER_BAR, _("_Cancel"),
@@ -1274,8 +1258,15 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 	g_signal_connect(G_OBJECT(set_combo), "changed", G_CALLBACK(ume_color_dialog_changed), color_dialog);
 	g_signal_connect(G_OBJECT(opacity_spin), "changed", G_CALLBACK(ume_color_dialog_changed), color_dialog);
 
-	// GtkWidget *color_dialog = ume_create_color_dialog(widget, data);
-	response = gtk_dialog_run(GTK_DIALOG(color_dialog)); // Loop on and update the dialog menu
+	return color_dialog;
+}
+
+static void ume_color_dialog(GtkWidget *widget, void *data) {
+	struct term_colors temp_colors = ume.colors;
+	int prev_colorset = ume.last_colorset - 1;
+
+	GtkWidget *color_dialog = ume_create_color_dialog(widget, data);
+	gint response = gtk_dialog_run(GTK_DIALOG(color_dialog)); // Loop on and update the dialog menu
 
 	if (response != GTK_RESPONSE_ACCEPT) {
 		ume.colors = temp_colors;
@@ -1308,11 +1299,8 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 		 * Set the current tab's colorset to the last selected one in the dialog.
 		 * This is probably what the new user expects, and the experienced user
 		 * hopefully will not mind. */
-		term->colorset = gtk_combo_box_get_active(GTK_COMBO_BOX(set_combo));
-		ume_set_config(cfg_group, "last_colorset", term->colorset + 1);
-		ume_set_colors();
+		ume_set_colorset(ume.last_colorset - 1);
 	}
-
 	gtk_widget_destroy(color_dialog);
 }
 
@@ -1814,7 +1802,7 @@ static void ume_closebutton_clicked(GtkWidget *widget, void *data) {
 }
 
 /* Callback called when ume configuration file is modified by an external process */
-// TODO override to load the new file into here? maybe make that a setting?
+// TODO create setting which on modification it reads from the file!
 static void ume_conf_changed(GtkWidget *widget, void *data) {
 	ume.externally_modified = true;
 }
@@ -2012,7 +2000,7 @@ static void ume_init() { // TODO break this glorious mega function .
 	ume.allow_bold = (strcmp(cfgtmp, "Yes") == 0) ? 1 : 0;
 	g_free(cfgtmp);
 
-	if (!g_key_file_has_key(ume.cfg_file, cfg_group, "cursor_type", NULL)) { // TODO fix loading cursor shapes!
+	if (!g_key_file_has_key(ume.cfg_file, cfg_group, "cursor_type", NULL)) {
 		ume_set_config(cfg_group, "cursor_type", "block");
 	}
 	cfgtmp = g_key_file_get_value(ume.cfg_file, cfg_group, "cursor_type", NULL);
@@ -2624,8 +2612,8 @@ void ume_spawn_callback(VteTerminal *vte, GPid pid, GError *error, gpointer user
 	}
 }
 
+// TODO break this up
 static void ume_add_tab() {
-	struct terminal *term;
 	GtkWidget *tab_label_hbox;
 	GtkWidget *close_button;
 	int index;
@@ -2633,7 +2621,7 @@ static void ume_add_tab() {
 	gchar *cwd = NULL;
 	gchar *label_text = _("Terminal %d");
 
-	term = g_new0(struct terminal, 1);
+	struct terminal *term = g_new0(struct terminal, 1);
 
 	/* Create label for tabs */
 	term->label_set_byuser = false;
