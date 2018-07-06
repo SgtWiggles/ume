@@ -1090,7 +1090,6 @@ static void ume_set_colors() {
 
 /* Callback from the color change dialog. Updates the contents of that
  * dialog, passed as 'data' from user input. */
-using color_buttons_array = std::array<GtkWidget *, PALETTE_SIZE + 3>;
 #define COLOR_BUTTON_ID "color_button%d"
 static void ume_color_dialog_changed(GtkWidget *widget, void *data) {
 	GtkDialog *dialog = (GtkDialog *)data;
@@ -1101,7 +1100,7 @@ static void ume_color_dialog_changed(GtkWidget *widget, void *data) {
 	GtkSpinButton *opacity_spin = g_object_get_data(G_OBJECT(dialog), "opacity_spin");
 	int selected = gtk_combo_box_get_active(set);
 
-	color_buttons_array color_buttons;
+	std::array<GtkWidget *, PALETTE_SIZE> color_buttons;
 	for (int i = 0; i < color_buttons.size(); ++i) {
 		char temp[64];
 		sprintf(temp, COLOR_BUTTON_ID, i);
@@ -1141,15 +1140,18 @@ static GtkWidget *create_color_button(GtkWidget *dialog, const gchar *label, con
 																			const gchar *button_id) {
 	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
 	struct terminal *term = ume_get_page_term(ume, page);
-	GtkWidget *blabel = gtk_label_new(label);
-	GtkWidget *button = gtk_color_button_new_with_rgba(color);
 	GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
 
-	gtk_box_pack_start(GTK_BOX(hbox), blabel, FALSE, FALSE, 12);
-	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 12);
+	if (label != nullptr) {
+		GtkWidget *blabel = gtk_label_new(label);
+		gtk_box_pack_start(GTK_BOX(hbox), blabel, FALSE, FALSE, 6);
+	}
+
+	GtkWidget *button = gtk_color_button_new_with_rgba(color);
+	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 6);
 
 	g_signal_connect(G_OBJECT(button), "color-set", G_CALLBACK(ume_color_dialog_changed), dialog);
-	if (button_id != NULL)
+	if (button_id != nullptr)
 		g_object_set_data(G_OBJECT(dialog), button_id, button);
 	return hbox;
 }
@@ -1160,24 +1162,20 @@ static GtkWidget *ume_create_color_dialog(GtkWidget *widget, void *data) {
 																												GTK_DIALOG_MODAL | GTK_DIALOG_USE_HEADER_BAR, _("_Cancel"),
 																												GTK_RESPONSE_CANCEL, _("_Select"), GTK_RESPONSE_ACCEPT, NULL);
 
-	gchar combo_text[3];
 	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
 	struct terminal *term = ume_get_page_term(ume, page);
 
-	color_buttons_array color_buttons;
-	color_buttons[0] =
-			create_color_button(color_dialog, "Foreground", &ume.colors.forecolors[term->colorset], "fg_button");
-	color_buttons[1] =
-			create_color_button(color_dialog, "Background", &ume.colors.backcolors[term->colorset], "bg_button");
-	color_buttons[2] = create_color_button(color_dialog, "Cursor", &ume.colors.curscolors[term->colorset], "curs_button");
-
+	std::array<GtkWidget *, PALETTE_SIZE> color_buttons;
 	for (int i = 0; i < PALETTE_SIZE; ++i) {
-		char label[32];
-		sprintf(label, "Color %d", i);
 		char button_id[32];
 		sprintf(button_id, COLOR_BUTTON_ID, i);
-		color_buttons[i + 3] = create_color_button(color_dialog, label, &ume.colors.palettes[term->colorset][i], button_id);
+		color_buttons[i] = create_color_button(color_dialog, nullptr, &ume.colors.palettes[term->colorset][i], button_id);
 	}
+
+	std::array<GtkWidget *, 3> special_buttons = {
+			create_color_button(color_dialog, "Foreground", &ume.colors.forecolors[term->colorset], "fg_button"),
+			create_color_button(color_dialog, "Background", &ume.colors.backcolors[term->colorset], "bg_button"),
+			create_color_button(color_dialog, "Cursor", &ume.colors.curscolors[term->colorset], "curs_button")};
 
 	/* Configure the new gtk header bar*/
 	GtkWidget *color_header = gtk_dialog_get_header_bar(GTK_DIALOG(color_dialog));
@@ -1195,6 +1193,7 @@ static GtkWidget *ume_create_color_dialog(GtkWidget *widget, void *data) {
 	GtkWidget *hbox_sets = gtk_box_new(FALSE, 12);
 	GtkWidget *set_label = gtk_label_new("Colorset");
 	GtkWidget *set_combo = gtk_combo_box_text_new();
+	gchar combo_text[3];
 	for (int cs = 0; cs < NUM_COLORSETS; cs++) {
 		g_snprintf(combo_text, 2, "%d", cs + 1);
 		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(set_combo), NULL, combo_text);
@@ -1209,14 +1208,27 @@ static GtkWidget *ume_create_color_dialog(GtkWidget *widget, void *data) {
 	GtkWidget *opacity_spin = gtk_spin_button_new(GTK_ADJUSTMENT(spinner_adj), 1.0, 0);
 	GtkWidget *opacity_label = gtk_label_new("Opacity level (%)");
 
+	std::array<GtkWidget *, 4> content_boxes = {
+			gtk_box_new(GTK_ORIENTATION_VERTICAL, 12), gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12),
+			gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12), gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12)};
+
 	gtk_box_pack_start(GTK_BOX(hbox_sets), set_label, FALSE, FALSE, 12);
 	gtk_box_pack_end(GTK_BOX(hbox_sets), set_combo, FALSE, FALSE, 12);
 	gtk_box_pack_start(GTK_BOX(hbox_opacity), opacity_label, FALSE, FALSE, 12);
 	gtk_box_pack_end(GTK_BOX(hbox_opacity), opacity_spin, FALSE, FALSE, 12);
 
 	gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(color_dialog))), hbox_sets, FALSE, FALSE, 6);
-	for (auto button : color_buttons)
-		gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(color_dialog))), button, FALSE, FALSE, 6);
+	for (auto btn : special_buttons)
+		gtk_box_pack_start(GTK_BOX(content_boxes[0]), btn, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(content_boxes[1]), gtk_label_new("Palette: "), FALSE, FALSE, 6);
+
+	for (int i = 0; i < PALETTE_SIZE / 2; ++i)
+		gtk_box_pack_start(GTK_BOX(content_boxes[2]), color_buttons[i], FALSE, FALSE, 0);
+	for (int i = PALETTE_SIZE / 2; i < PALETTE_SIZE; ++i)
+		gtk_box_pack_start(GTK_BOX(content_boxes[3]), color_buttons[i], FALSE, FALSE, 0);
+
+	for (auto box : content_boxes)
+		gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(color_dialog))), box, FALSE, FALSE, 6);
 	gtk_box_pack_end(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(color_dialog))), hbox_opacity, FALSE, FALSE, 6);
 
 	gtk_widget_show_all(gtk_dialog_get_content_area(GTK_DIALOG(color_dialog)));
@@ -1225,11 +1237,9 @@ static GtkWidget *ume_create_color_dialog(GtkWidget *widget, void *data) {
 	 * to these selector widgets */
 	g_object_set_data(G_OBJECT(color_dialog), "set_combo", set_combo);
 	g_object_set_data(G_OBJECT(color_dialog), "opacity_spin", opacity_spin);
-	g_object_set_data(G_OBJECT(color_dialog), "colorset", &(ume.colors));
 
 	g_signal_connect(G_OBJECT(set_combo), "changed", G_CALLBACK(ume_color_dialog_changed), color_dialog);
 	g_signal_connect(G_OBJECT(opacity_spin), "changed", G_CALLBACK(ume_color_dialog_changed), color_dialog);
-
 	return color_dialog;
 }
 
