@@ -187,6 +187,7 @@ static struct {
 	bool use_fading;
 	bool scrollable_tabs;
 	bool reload_config_on_modify; /* When the config files gets modified reload it? */
+	bool ignore_overwrite;
 
 	GtkWidget *item_copy_link; /* We include here only the items which need to be hidden */
 	GtkWidget *item_open_link;
@@ -921,6 +922,9 @@ static void ume_title_changed(GtkWidget *widget, void *data) {
 
 /* Save configuration */
 static void ume_config_done() {
+	if (ume.ignore_overwrite)
+		return;
+
 	GError *gerror = NULL;
 	gsize len = 0;
 
@@ -2111,6 +2115,7 @@ static void ume_reload_config_file() {
 	/* set default title pattern from config or NULL */
 	ume.tab_default_title = g_key_file_get_string(ume.cfg_file, cfg_group, "tab_default_title", NULL);
 	ume.reload_config_on_modify = ume_load_config_or(cfg_group, "reload_config_on_modify", false);
+	ume.ignore_overwrite = ume_load_config_or(cfg_group, "ignore_overwrite", false);
 }
 
 static void ume_init() { // TODO break this glorious mega function .
