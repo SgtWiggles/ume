@@ -922,9 +922,6 @@ static void ume_title_changed(GtkWidget *widget, void *data) {
 
 /* Save configuration */
 static void ume_config_done() {
-	if (ume.ignore_overwrite)
-		return;
-
 	GError *gerror = NULL;
 	gsize len = 0;
 
@@ -938,7 +935,7 @@ static void ume_config_done() {
 	if (ume.config_modified) {
 		bool overwrite = true;
 
-		if (ume.externally_modified) { // TODO break this into a confirmation function
+		if (ume.externally_modified && !ume.ignore_overwrite) { // TODO break this into a confirmation function
 			GtkWidget *dialog;
 			gint response;
 
