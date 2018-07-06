@@ -151,6 +151,7 @@ static struct {
 
 	GKeyFile *cfg_file;
 	// config_t config;
+	// settings begin
 	gint scroll_lines;
 	gint scroll_amount;
 	gint label_count;
@@ -221,7 +222,7 @@ static struct {
 	gint increase_font_size_key;
 	gint decrease_font_size_key;
 	gint set_colorset_keys[NUM_COLORSETS];
-
+	// Settings end
 	guint width;
 	guint height;
 	glong columns;
@@ -262,7 +263,7 @@ static GQuark term_data_id = 0;
 #define ume_set_page_term(ume, page_idx, term)                                                                         \
 	g_object_set_qdata_full(G_OBJECT(gtk_notebook_get_nth_page((GtkNotebook *)ume.notebook, page_idx)), term_data_id,    \
 													term, (GDestroyNotify)g_free);
-
+// Config setters
 template <class T> inline void ume_set_config(const gchar *group, const gchar *key, T value);
 template <> inline void ume_set_config<gint>(const gchar *group, const gchar *key, gint value) {
 	g_key_file_set_integer(ume.cfg_file, group, key, value);
@@ -288,6 +289,7 @@ template <> inline void ume_set_config<bool>(const char *group, const char *key,
 	ume.config_modified = true;
 }
 
+// Config getters
 template <class T> inline T ume_config_get(const gchar *group, const gchar *key) {
 	return g_key_file_get_value(ume.cfg_file, group, key, nullptr);
 }
@@ -331,6 +333,7 @@ static void ume_conf_changed(GtkWidget *, void *);
 static void ume_window_show_event(GtkWidget *, gpointer);
 // static gboolean ume_notebook_focus_in (GtkWidget *, void *);
 static gboolean ume_notebook_scroll(GtkWidget *, GdkEventScroll *);
+
 /* Menuitem callbacks */
 static void ume_font_dialog(GtkWidget *, void *);
 static void ume_set_name_dialog(GtkWidget *, void *);
@@ -421,7 +424,6 @@ static guint ume_tokeycode(guint key) {
 	GdkKeymapKey *keys;
 	gint n_keys;
 	guint res = 0;
-
 	keymap = gdk_keymap_get_for_display(gdk_display_get_default());
 
 	if (gdk_keymap_get_entries_for_keyval(keymap, key, &keys, &n_keys)) {
@@ -430,7 +432,6 @@ static guint ume_tokeycode(guint key) {
 		}
 		g_free(keys);
 	}
-
 	return res;
 }
 
@@ -457,19 +458,7 @@ void search(VteTerminal *vte, const char *pattern, bool reverse) {
 	}
 }
 
-static int get_scroll_amount(guint keycode, VteTerminal *vte) { // TODO this should really be a lambda
-	glong rows = vte_terminal_get_row_count(vte);
-	if (keycode == ume_tokeycode(ume.scroll_up_key))
-		return -ume.scroll_amount;
-	else if (keycode == ume_tokeycode(ume.scroll_down_key))
-		return ume.scroll_amount;
-	else if (keycode == ume_tokeycode(ume.page_up_key))
-		return -(rows - 1);
-	else if (keycode == ume_tokeycode(ume.page_down_key))
-		return rows - 1;
-	return 0;
-}
-
+// TODO think of a better way to register keybinds
 static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data) {
 	if (event->type != GDK_KEY_PRESS)
 		return FALSE;
@@ -609,7 +598,20 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 		page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
 		term = ume_get_page_term(ume, page);
 		VteTerminal *vte = (VteTerminal *)term->vte;
-		const int scroll_amount = get_scroll_amount(keycode, vte);
+
+		const int scroll_amount = [](guint keycode, VteTerminal *vte) {
+			gint rows = (gint)vte_terminal_get_row_count(vte);
+			if (keycode == ume_tokeycode(ume.scroll_up_key))
+				return -ume.scroll_amount;
+			else if (keycode == ume_tokeycode(ume.scroll_down_key))
+				return ume.scroll_amount;
+			else if (keycode == ume_tokeycode(ume.page_up_key))
+				return -(rows - 1);
+			else if (keycode == ume_tokeycode(ume.page_down_key))
+				return (rows - 1);
+			return 0;
+		}(keycode, vte);
+
 		if (scroll_amount != 0) {
 			GtkAdjustment *adjust = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(vte));
 			gtk_adjustment_set_value(adjust, gtk_adjustment_get_value(adjust) + scroll_amount);
@@ -636,6 +638,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	return FALSE;
 }
 
+// On click function
 static gboolean ume_button_press(GtkWidget *widget, GdkEventButton *button_event, gpointer user_data) {
 	struct terminal *term;
 	gint page, tag;
@@ -659,7 +662,7 @@ static gboolean ume_button_press(GtkWidget *widget, GdkEventButton *button_event
 	}
 
 	/* Right button: show the popup menu */
-	if (button_event->button == 3) {
+	if (button_event->button == 3) { // TODO break this out somewhere, its showing the right click menu
 		GtkMenu *menu;
 		menu = GTK_MENU(widget);
 
@@ -738,25 +741,6 @@ static gboolean ume_focus_out(GtkWidget *widget, GdkEvent *event, void *data) {
 	return FALSE;
 }
 
-/* Handler for notebook focus-in-event */
-// static gboolean
-// ume_notebook_focus_in(GtkWidget *widget, void *data)
-//{
-//	struct terminal *term;
-//	int index;
-//
-//	index = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
-//	term = ume_get_page_term(ume, index);
-//
-//	/* If term is found stop event propagation */
-//	if(term != NULL) {
-//		gtk_widget_grab_focus(term->vte);
-//		return TRUE;
-//	}
-//
-//	return FALSE;
-//}
-
 /* Handler for notebook scroll-event - switches tabs by scroll direction
 TODO: let scroll directions configurable */
 static gboolean ume_notebook_scroll(GtkWidget *widget, GdkEventScroll *event) {
@@ -782,6 +766,7 @@ static gboolean ume_notebook_scroll(GtkWidget *widget, GdkEventScroll *event) {
 			}
 			break;
 		}
+
 		case GDK_SCROLL_LEFT:
 		case GDK_SCROLL_RIGHT:
 		case GDK_SCROLL_SMOOTH:
@@ -865,12 +850,10 @@ static void ume_child_exited(GtkWidget *widget, void *data) {
 }
 
 static void ume_eof(GtkWidget *widget, void *data) {
-	gint npages;
-	struct terminal *term;
 
 	SAY("Got EOF signal");
 
-	npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
+	gint npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
 
 	/* Only write configuration to disk if it's the last tab */
 	if (npages == 1) {
@@ -881,8 +864,7 @@ static void ume_eof(GtkWidget *widget, void *data) {
 		 the last terminal, so we need to kill it here.  Check with libvte authors about
 		 child-exited/eof signals */
 	if (gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook)) == 0) {
-
-		term = ume_get_page_term(ume, 0);
+		struct terminal *term = ume_get_page_term(ume, 0);
 
 		if (option_hold == TRUE) {
 			SAY("hold option has been activated");
@@ -905,17 +887,12 @@ static void ume_eof(GtkWidget *widget, void *data) {
 
 /* This handler is called when window title changes, and is used to change window and notebook pages titles */
 static void ume_title_changed(GtkWidget *widget, void *data) {
-	struct terminal *term;
-	const char *title;
-	gint n_pages;
-	gint modified_page;
 	VteTerminal *vte_term = (VteTerminal *)widget;
+	gint modified_page = ume_find_tab(vte_term);
+	gint n_pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
+	struct terminal *term = ume_get_page_term(ume, modified_page);
 
-	modified_page = ume_find_tab(vte_term);
-	n_pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
-	term = ume_get_page_term(ume, modified_page);
-
-	title = vte_terminal_get_window_title(VTE_TERMINAL(term->vte));
+	const char *title = vte_terminal_get_window_title(VTE_TERMINAL(term->vte));
 
 	/* User set values overrides any other one, but title should be changed */
 	if (!term->label_set_byuser)
@@ -945,10 +922,9 @@ static void ume_config_done() {
 
 	/* Write to file IF there's been changes */
 	if (ume.config_modified) {
-
 		bool overwrite = true;
 
-		if (ume.externally_modified) {
+		if (ume.externally_modified) { // TODO break this into a confirmation function
 			GtkWidget *dialog;
 			gint response;
 
@@ -989,12 +965,12 @@ static void ume_config_done() {
 }
 
 static gboolean ume_delete_event(GtkWidget *widget, void *data) {
-	struct terminal *term;
-	GtkWidget *dialog;
-	gint response;
-	gint npages;
-	gint i;
-	pid_t pgid;
+	// struct terminal *term; //TODO remove?
+	// GtkWidget *dialog;
+	// gint response;
+	// gint npages;
+	// gint i;
+	// pid_t pgid;
 
 	ume_config_done();
 	return FALSE;
@@ -1010,13 +986,10 @@ static void ume_window_show_event(GtkWidget *widget, gpointer data) {
 }
 
 static void ume_font_dialog(GtkWidget *widget, void *data) {
-	GtkWidget *font_dialog;
-	gint response;
-
-	font_dialog = gtk_font_chooser_dialog_new(_("Select font"), GTK_WINDOW(ume.main_window));
+	GtkWidget *font_dialog = gtk_font_chooser_dialog_new(_("Select font"), GTK_WINDOW(ume.main_window));
 	gtk_font_chooser_set_font_desc(GTK_FONT_CHOOSER(font_dialog), ume.font);
 
-	response = gtk_dialog_run(GTK_DIALOG(font_dialog));
+	gint response = gtk_dialog_run(GTK_DIALOG(font_dialog));
 
 	if (response == GTK_RESPONSE_OK) {
 		pango_font_description_free(ume.font);
@@ -1029,7 +1002,7 @@ static void ume_font_dialog(GtkWidget *widget, void *data) {
 	gtk_widget_destroy(font_dialog);
 }
 
-static void ume_set_name_dialog(GtkWidget *widget, void *data) {
+static void ume_set_name_dialog(GtkWidget *widget, void *data) { // TODO break this up a bit
 	GtkWidget *input_dialog, *input_header;
 	GtkWidget *entry, *label;
 	GtkWidget *name_hbox; /* We need this for correct spacing */
@@ -1088,37 +1061,32 @@ static void ume_set_name_dialog(GtkWidget *widget, void *data) {
 }
 
 static void ume_set_colorset(int cs) {
-	gint page;
-	struct terminal *term;
-
 	if (cs < 0 || cs >= NUM_COLORSETS)
 		return;
 
-	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
-	term = ume_get_page_term(ume, page);
+	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
+	struct terminal *term = ume_get_page_term(ume, page);
 	term->colorset = cs;
 	ume.palette = ume.colors.palettes[cs];
 
 	ume_set_config(cfg_group, "last_colorset", term->colorset + 1);
-
 	ume_set_colors();
 }
 
 /* Set the terminal colors for all notebook tabs */
 static void ume_set_colors() {
-	int i;
 	int n_pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
 	struct terminal *term;
-
-	for (i = (n_pages - 1); i >= 0; i--) {
+	for (int i = (n_pages - 1); i >= 0; i--) {
 		term = ume_get_page_term(ume, i);
 		SAY("Setting colorset %d", term->colorset + 1);
 
 		vte_terminal_set_colors(VTE_TERMINAL(term->vte), &ume.colors.forecolors[term->colorset],
 														&ume.colors.backcolors[term->colorset], ume.palette, PALETTE_SIZE);
+
+		// TODO add a way to toggle between the cursor color methods, right now we only allow the inverting method
 		// vte_terminal_set_color_cursor(VTE_TERMINAL(term->vte), &ume.colors.curscolors[term->colorset]);
 		vte_terminal_set_color_cursor((VteTerminal *)term->vte, nullptr);
-		// TODO add a way to toggle between the cursor color methods!
 	}
 
 	/* Main window opacity must be set. Otherwise vte widget will remain opaque */
@@ -1134,8 +1102,6 @@ static void ume_color_dialog_changed(GtkWidget *widget, void *data) {
 	GtkColorButton *curs_button = g_object_get_data(G_OBJECT(dialog), "buttoncurs");
 	GtkComboBox *set = g_object_get_data(G_OBJECT(dialog), "set_combo");
 	GtkSpinButton *opacity_spin = g_object_get_data(G_OBJECT(dialog), "opacity_spin");
-
-	// struct term_colors *temp_colors = g_object_get_data(G_OBJECT(dialog), "temp_colors");
 	int selected = gtk_combo_box_get_active(set);
 
 	GtkColorButton *palette_buttons[PALETTE_SIZE];
@@ -1155,23 +1121,25 @@ static void ume_color_dialog_changed(GtkWidget *widget, void *data) {
 		gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(fore_button), &ume.colors.forecolors[selected]);
 		gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(back_button), &ume.colors.backcolors[selected]);
 		gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(curs_button), &ume.colors.curscolors[selected]);
-		for (int i = 0; i < PALETTE_SIZE; ++i) {
+		for (int i = 0; i < PALETTE_SIZE; ++i)
 			gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(palette_buttons[i]), &(ume.colors.palettes[selected][i]));
-		}
 
 		gtk_spin_button_set_value(opacity_spin, new_opacity);
 	} else {
 		gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(fore_button), &ume.colors.forecolors[selected]);
 		gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(back_button), &ume.colors.backcolors[selected]);
 		gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(curs_button), &ume.colors.curscolors[selected]);
-		for (int i = 0; i < PALETTE_SIZE; ++i) {
+		for (int i = 0; i < PALETTE_SIZE; ++i)
 			gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(palette_buttons[i]), &(ume.colors.palettes[selected][i]));
-		}
+
 		gtk_spin_button_update(opacity_spin);
 		ume.colors.backcolors[selected].alpha = gtk_spin_button_get_value(opacity_spin) / 100;
 	}
 
 	ume_set_colorset(selected);
+}
+
+static GtkWidget *ume_create_color_dialog(GtkWidget *widget, void *data) {
 }
 
 static void ume_color_dialog(GtkWidget *widget, void *data) {
@@ -1306,6 +1274,7 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 	g_signal_connect(G_OBJECT(set_combo), "changed", G_CALLBACK(ume_color_dialog_changed), color_dialog);
 	g_signal_connect(G_OBJECT(opacity_spin), "changed", G_CALLBACK(ume_color_dialog_changed), color_dialog);
 
+	// GtkWidget *color_dialog = ume_create_color_dialog(widget, data);
 	response = gtk_dialog_run(GTK_DIALOG(color_dialog)); // Loop on and update the dialog menu
 
 	if (response != GTK_RESPONSE_ACCEPT) {
@@ -1316,25 +1285,21 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 		/* Save all colorsets to both the global struct and configuration.*/
 		for (int i = 0; i < NUM_COLORSETS; i++) {
 			char group[20];
-			gchar *cfgtmp;
 			sprintf(group, COLOR_GROUP_KEY, i + 1);
 
-			cfgtmp = gdk_rgba_to_string(&ume.colors.forecolors[i]);
-			ume_set_config(group, COLOR_FOREGROUND_KEY, cfgtmp);
-			g_free(cfgtmp);
+			auto cfgtmp = std::unique_ptr<gchar, g_free_deleter>(gdk_rgba_to_string(&ume.colors.forecolors[i]));
+			ume_set_config(group, COLOR_FOREGROUND_KEY, cfgtmp.get());
 
-			cfgtmp = gdk_rgba_to_string(&ume.colors.backcolors[i]);
-			ume_set_config(group, COLOR_BACKGROUND_KEY, cfgtmp);
-			g_free(cfgtmp);
+			cfgtmp = std::unique_ptr<gchar, g_free_deleter>(gdk_rgba_to_string(&ume.colors.backcolors[i]));
+			ume_set_config(group, COLOR_BACKGROUND_KEY, cfgtmp.get());
 
-			cfgtmp = gdk_rgba_to_string(&ume.colors.curscolors[i]);
-			ume_set_config(group, COLOR_CURSOR_KEY, cfgtmp);
-			g_free(cfgtmp);
+			cfgtmp = std::unique_ptr<gchar, g_free_deleter>(gdk_rgba_to_string(&ume.colors.curscolors[i]));
+			ume_set_config(group, COLOR_CURSOR_KEY, cfgtmp.get());
 
 			for (int j = 0; j < PALETTE_SIZE; ++j) {
 				char temp_name[32];
 				sprintf(temp_name, COLOR_PALETTE_KEY, j);
-				std::unique_ptr<gchar, g_free_deleter> cfgstr(gdk_rgba_to_string(&ume.colors.palettes[i][j]));
+				auto cfgstr = std::unique_ptr<gchar, g_free_deleter>(gdk_rgba_to_string(&ume.colors.palettes[i][j]));
 				ume_set_config(group, temp_name, cfgstr.get());
 			}
 		}
@@ -1351,12 +1316,10 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 	gtk_widget_destroy(color_dialog);
 }
 
+// Fading
 static void ume_fade_out() { // NOTE:  maybe we can make this fade between color switching
-	gint page;
-	struct terminal *term;
-
-	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
-	term = ume_get_page_term(ume, page);
+	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
+	struct terminal *term = ume_get_page_term(ume, page);
 
 	if (!ume.faded) {
 		ume.faded = true;
@@ -1372,13 +1335,9 @@ static void ume_fade_out() { // NOTE:  maybe we can make this fade between color
 		}
 	}
 }
-
 static void ume_fade_in() { // NOTE: maybe we can make this fade between color switching
-	gint page;
-	struct terminal *term;
-
-	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
-	term = ume_get_page_term(ume, page);
+	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
+	struct terminal *term = ume_get_page_term(ume, page);
 
 	if (ume.faded) {
 		ume.faded = false;
@@ -1395,7 +1354,7 @@ static void ume_fade_in() { // NOTE: maybe we can make this fade between color s
 	}
 }
 
-static void ume_search_dialog(GtkWidget *widget, void *data) { // TODO: (low) inline into terminal itself?
+static void ume_search_dialog(GtkWidget *widget, void *data) { // TODO: (low) inline into terminal itself? clean up
 	GtkWidget *title_dialog, *title_header;
 	GtkWidget *entry, *label;
 	GtkWidget *title_hbox;
@@ -1442,6 +1401,7 @@ static void ume_search_dialog(GtkWidget *widget, void *data) { // TODO: (low) in
 	gtk_widget_destroy(title_dialog);
 }
 
+// TODO clean up
 static void ume_set_title_dialog(GtkWidget *widget, void *data) {
 	GtkWidget *title_dialog, *title_header;
 	GtkWidget *entry, *label;
@@ -1489,9 +1449,7 @@ static void ume_set_title_dialog(GtkWidget *widget, void *data) {
 }
 
 static void ume_copy_url(GtkWidget *widget, void *data) {
-	GtkClipboard *clip;
-
-	clip = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
+	GtkClipboard *clip = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
 	gtk_clipboard_set_text(clip, ume.current_match, -1);
 	clip = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
 	gtk_clipboard_set_text(clip, ume.current_match, -1);
@@ -1580,16 +1538,11 @@ static void ume_show_close_button(GtkWidget *widget, void *data) {
 }
 
 static void ume_show_scrollbar(GtkWidget *widget, void *data) {
-	gint page;
-	struct terminal *term;
-	gint n_pages;
-	int i;
-
 	ume.keep_fc = 1;
 
-	n_pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
-	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
-	term = ume_get_page_term(ume, page);
+	gint n_pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
+	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
+	struct terminal *term = ume_get_page_term(ume, page);
 
 	if (!g_key_file_get_boolean(ume.cfg_file, cfg_group, "scrollbar", NULL)) {
 		ume.show_scrollbar = true;
@@ -1600,7 +1553,7 @@ static void ume_show_scrollbar(GtkWidget *widget, void *data) {
 	}
 
 	/* Toggle/Untoggle the scrollbar for all tabs */
-	for (i = (n_pages - 1); i >= 0; i--) {
+	for (int i = (n_pages - 1); i >= 0; i--) {
 		term = ume_get_page_term(ume, i);
 		if (!ume.show_scrollbar)
 			gtk_widget_hide(term->scrollbar);
@@ -1652,11 +1605,8 @@ static void ume_blinking_cursor(GtkWidget *widget, void *data) {
 }
 
 static void ume_allow_bold(GtkWidget *widget, void *data) {
-	gint page;
-	struct terminal *term;
-
-	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
-	term = ume_get_page_term(ume, page);
+	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
+	struct terminal *term = ume_get_page_term(ume, page);
 
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
 		vte_terminal_set_allow_bold(VTE_TERMINAL(term->vte), TRUE);
@@ -1668,7 +1618,6 @@ static void ume_allow_bold(GtkWidget *widget, void *data) {
 }
 
 static void ume_stop_tab_cycling_at_end_tabs(GtkWidget *widget, void *data) {
-
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
 		ume_set_config(cfg_group, "stop_tab_cycling_at_end_tabs", "Yes");
 		ume.stop_tab_cycling_at_end_tabs = TRUE;
@@ -1679,13 +1628,11 @@ static void ume_stop_tab_cycling_at_end_tabs(GtkWidget *widget, void *data) {
 }
 
 static void ume_set_cursor(GtkWidget *widget, void *data) {
-	struct terminal *term;
 
 	char *cursor_string = (char *)data;
 	int n_pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
 
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
-
 		if (strcmp(cursor_string, "block") == 0) {
 			ume.cursor_type = VTE_CURSOR_SHAPE_BLOCK;
 			ume_set_config(cfg_group, "cursor_type", "block");
@@ -1698,7 +1645,7 @@ static void ume_set_cursor(GtkWidget *widget, void *data) {
 		}
 
 		for (int i = (n_pages - 1); i >= 0; i--) {
-			term = ume_get_page_term(ume, i);
+			struct terminal *term = ume_get_page_term(ume, i);
 			vte_terminal_set_cursor_shape(VTE_TERMINAL(term->vte), ume.cursor_type);
 		}
 	}
@@ -1749,7 +1696,6 @@ static gboolean ume_resized_window(GtkWidget *widget, GdkEventConfigure *event, 
 		// ume.width, ume.height, event->width, event->height);
 		ume.resized = TRUE;
 	}
-
 	return FALSE;
 }
 
@@ -1765,22 +1711,16 @@ static void ume_setname_entry_changed(GtkWidget *widget, void *data) {
 
 /* Parameters are never used */
 static void ume_copy(GtkWidget *widget, void *data) {
-	gint page;
-	struct terminal *term;
-
-	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
-	term = ume_get_page_term(ume, page);
+	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
+	struct terminal *term = ume_get_page_term(ume, page);
 
 	vte_terminal_copy_clipboard_format(VTE_TERMINAL(term->vte), VTE_FORMAT_TEXT);
 }
 
 /* Parameters are never used */
 static void ume_paste(GtkWidget *widget, void *data) {
-	gint page;
-	struct terminal *term;
-
-	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
-	term = ume_get_page_term(ume, page);
+	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
+	struct terminal *term = ume_get_page_term(ume, page);
 
 	vte_terminal_paste_clipboard(VTE_TERMINAL(term->vte));
 }
@@ -1790,15 +1730,9 @@ static void ume_new_tab(GtkWidget *widget, void *data) {
 }
 
 static void ume_close_tab(GtkWidget *widget, void *data) {
-	pid_t pgid;
-	GtkWidget *dialog;
-	gint response;
-	struct terminal *term;
-	gint page, npages;
-
-	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
-	npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
-	term = ume_get_page_term(ume, page);
+	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
+	gint npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
+	struct terminal *term = ume_get_page_term(ume, page);
 
 	/* Only write configuration to disk if it's the last tab */
 	if (npages == 1) {
@@ -1806,19 +1740,18 @@ static void ume_close_tab(GtkWidget *widget, void *data) {
 	}
 
 	/* Check if there are running processes for this tab. Use tcgetpgrp to compare to the shell PGID */
-	pgid = tcgetpgrp(vte_pty_get_fd(vte_terminal_get_pty(VTE_TERMINAL(term->vte))));
+	pid_t pgid = tcgetpgrp(vte_pty_get_fd(vte_terminal_get_pty(VTE_TERMINAL(term->vte))));
 
 	if ((pgid != -1) && (pgid != term->pid) && (!ume.less_questions)) {
-		dialog =
+		GtkWidget *dialog =
 				gtk_message_dialog_new(GTK_WINDOW(ume.main_window), GTK_DIALOG_MODAL, GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO,
 															 _("There is a running process in this terminal.\n\nDo you really want to close it?"));
 
-		response = gtk_dialog_run(GTK_DIALOG(dialog));
+		gint response = gtk_dialog_run(GTK_DIALOG(dialog));
 		gtk_widget_destroy(dialog);
 
-		if (response == GTK_RESPONSE_YES) {
+		if (response == GTK_RESPONSE_YES)
 			ume_del_tab(page);
-		}
 	} else
 		ume_del_tab(page);
 
@@ -1881,6 +1814,7 @@ static void ume_closebutton_clicked(GtkWidget *widget, void *data) {
 }
 
 /* Callback called when ume configuration file is modified by an external process */
+// TODO override to load the new file into here? maybe make that a setting?
 static void ume_conf_changed(GtkWidget *widget, void *data) {
 	ume.externally_modified = true;
 }
@@ -1908,31 +1842,31 @@ static void ume_use_fading(GtkWidget *widget, void *data) { // TODO: what is fad
 }
 
 /******* Functions ********/
-static void ume_load_colorsets() { // TODO maybe make this return a colors object?
-	gchar *cfgtmp = NULL;
+static term_colors ume_load_colorsets() {
+	using str_ptr = std::unique_ptr<const gchar, g_free_deleter>;
+	term_colors colors;
+
 	for (int i = 0; i < NUM_COLORSETS; i++) {
 		char group[32];
 		sprintf(group, "colors%d", i + 1);
 
-		cfgtmp = ume_load_config_or(group, COLOR_FOREGROUND_KEY, "rgb(192,192,192)");
-		gdk_rgba_parse(&ume.colors.forecolors[i], cfgtmp);
-		g_free(cfgtmp);
+		auto cfgtmp = str_ptr(ume_load_config_or(group, COLOR_FOREGROUND_KEY, "rgb(192,192,192)"));
+		gdk_rgba_parse(&colors.forecolors[i], cfgtmp.get());
 
-		cfgtmp = ume_load_config_or(group, COLOR_BACKGROUND_KEY, "rgba(0,0,0,1)");
-		gdk_rgba_parse(&ume.colors.backcolors[i], cfgtmp);
-		g_free(cfgtmp);
+		cfgtmp = str_ptr(ume_load_config_or(group, COLOR_BACKGROUND_KEY, "rgba(0,0,0,1)"));
+		gdk_rgba_parse(&colors.backcolors[i], cfgtmp.get());
 
-		cfgtmp = ume_load_config_or(group, COLOR_CURSOR_KEY, "rgb(255,255,255)");
-		gdk_rgba_parse(&ume.colors.curscolors[i], cfgtmp);
-		g_free(cfgtmp);
+		cfgtmp = str_ptr(ume_load_config_or(group, COLOR_CURSOR_KEY, "rgb(255,255,255)"));
+		gdk_rgba_parse(&colors.curscolors[i], cfgtmp.get());
 
 		for (int j = 0; j < PALETTE_SIZE; ++j) {
 			char key[32];
 			sprintf(key, COLOR_PALETTE_KEY, j);
-			std::unique_ptr<const gchar, g_free_deleter> cfgstr(ume_load_config_or(group, key, DEFAULT_PALETTES[i][j]));
-			gdk_rgba_parse(&(ume.colors.palettes[i][j]), cfgstr.get());
+			auto cfgstr = str_ptr(ume_load_config_or(group, key, DEFAULT_PALETTES[i][j]));
+			gdk_rgba_parse(&colors.palettes[i][j], cfgstr.get());
 		}
 	}
+	return colors;
 }
 
 static void ume_init() { // TODO break this glorious mega function .
@@ -1983,7 +1917,7 @@ static void ume_init() { // TODO break this glorious mega function .
 	 * too. I think we can: the only possible error is that the config file
 	 * doesn't exist, but we have just read it!
 	 */
-	ume_load_colorsets();
+	ume.colors = ume_load_colorsets();
 	ume.last_colorset = ume_load_config_or<gint>(cfg_group, "last_colorset", 1);
 	ume.palette = ume.colors.palettes[ume.last_colorset - 1];
 
