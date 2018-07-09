@@ -15,7 +15,7 @@ glib >= 2.40
 gtk >= 3.20
 x11-devel
 ```
-Also requires a C++17 compliant compiler.
+Also requires a C++17 compliant compiler. So far ume has been compiled with gcc 7.3.0 on Void Linux x64. 
   
 ### Installing
 
@@ -110,6 +110,8 @@ Key bindings can be unbound by erasing the field and leaving it blank.
 |`ignore_overwrite`|`false`| Ignore the overwrite prompt when closing ume |
 
 (UNDER CONSTRUCTION)
+### Contact
+  For submitting bugs or requesting new features, please use the [issue tracker][tracker]. Before submitting make sure you are using the latest version of ume. If you are submitting a bug report be sure to include your operating system, a minimal way to reproduce the bug and anything else that may be relevent to the bug.
 
 ### TODO
 - [ ] Clean up code base  
@@ -119,6 +121,7 @@ Key bindings can be unbound by erasing the field and leaving it blank.
 - [ ] Change yes/no in config file to true false values  
 - [ ] Update [INSTALL](INSTALL)  
 - [ ] Reload settings keybind
+- [ ] Fix the automated reloading system to prevent overwrites.
 - [x] Add shell colors to color menu  
 - [x] Programmatically manipulate ume while it is running  
 
