@@ -111,7 +111,7 @@ Key bindings can be unbound by erasing the field and leaving it blank.
 
 (UNDER CONSTRUCTION)
 ### Contact
-  For submitting bugs or requesting new features, please use the [issue tracker][tracker]. Before submitting make sure you are using the latest version of ume. If you are submitting a bug report be sure to include your operating system, a minimal way to reproduce the bug and anything else that may be relevent to the bug.
+  For submitting bugs or requesting new features, please use the [issue tracker](https://github.com/SgtWiggles/ume/issues). Before submitting make sure you are using the latest version of ume. If you are submitting a bug report be sure to include your operating system, a minimal way to reproduce the bug and anything else that may be relevent to the bug.
 
 ### TODO
 - [ ] Clean up code base  
