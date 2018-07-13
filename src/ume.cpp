@@ -970,7 +970,7 @@ static void ume_set_colorset(int cs) {
 	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
 	struct terminal *term = ume_get_page_term(ume, page);
 	term->colorset = cs;
-	ume.palette = ume.config.colors.palettes[cs];
+	ume.palette = ume.config.colors.palettes[cs].data();
 
 	ume_set_config(cfg_group, "last_colorset", term->colorset + 1);
 	ume_set_colors();
@@ -1152,7 +1152,7 @@ static GtkWidget *ume_create_color_dialog(GtkWidget *widget, void *data) {
 }
 
 static void ume_color_dialog(GtkWidget *widget, void *data) {
-	struct term_colors temp_colors = ume.config.colors;
+	struct term_colors_t temp_colors = ume.config.colors;
 	int prev_colorset = ume.config.last_colorset - 1;
 
 	GtkWidget *color_dialog = ume_create_color_dialog(widget, data);
@@ -1726,9 +1726,9 @@ static void ume_use_fading(GtkWidget *widget, void *data) {
 }
 
 /******* Functions ********/
-static term_colors ume_load_colorsets() {
+static term_colors_t ume_load_colorsets() {
 	using str_ptr = std::unique_ptr<const gchar, g_free_deleter>;
-	term_colors colors;
+	term_colors_t colors;
 
 	for (int i = 0; i < NUM_COLORSETS; i++) {
 		char group[32];
@@ -1804,7 +1804,7 @@ static void ume_reload_config_file(bool readonly) {
 
 	ume.config.colors = ume_load_colorsets();
 	ume.config.last_colorset = ume_load_config_or<gint>(cfg_group, "last_colorset", 1);
-	ume.palette = ume.config.colors.palettes[ume.config.last_colorset - 1];
+	ume.palette = ume.config.colors.palettes[ume.config.last_colorset - 1].data();
 
 	ume.config.scroll_lines = ume_load_config_or(cfg_group, "scroll_lines", DEFAULT_SCROLL_LINES);
 	ume.config.scroll_amount = ume_load_config_or(cfg_group, "scroll_amount", DEFAULT_SCROLL_AMOUNT);
@@ -1853,51 +1853,60 @@ static void ume_reload_config_file(bool readonly) {
 	ume.config.word_chars = ume_load_config_or(cfg_group, "word_chars", DEFAULT_WORD_CHARS);
 
 	// TODO accelerator better strings or merge with keybinds!
-	ume.config.add_tab_accelerator = ume_load_config_or(cfg_group, "add_tab_accelerator", DEFAULT_ADD_TAB_ACCELERATOR);
-	ume.config.del_tab_accelerator = ume_load_config_or(cfg_group, "del_tab_accelerator", DEFAULT_DEL_TAB_ACCELERATOR);
-	ume.config.switch_tab_accelerator =
-			ume_load_config_or<gint>(cfg_group, "switch_tab_accelerator", DEFAULT_SWITCH_TAB_ACCELERATOR);
-	ume.config.move_tab_accelerator = ume_load_config_or(cfg_group, "move_tab_accelerator", DEFAULT_MOVE_TAB_ACCELERATOR);
-	ume.config.copy_accelerator = ume_load_config_or(cfg_group, "copy_accelerator", DEFAULT_COPY_ACCELERATOR);
-	ume.config.scrollbar_accelerator =
-			ume_load_config_or(cfg_group, "scrollbar_accelerator", DEFAULT_SCROLLBAR_ACCELERATOR);
-	ume.config.open_url_accelerator = ume_load_config_or(cfg_group, "open_url_accelerator", DEFAULT_OPEN_URL_ACCELERATOR);
-	ume.config.font_size_accelerator =
-			ume_load_config_or(cfg_group, "font_size_accelerator", DEFAULT_FONT_SIZE_ACCELERATOR);
-	ume.config.set_tab_name_accelerator =
-			ume_load_config_or(cfg_group, "set_tab_name_accelerator", DEFAULT_SET_TAB_NAME_ACCELERATOR);
-	ume.config.search_accelerator = ume_load_config_or(cfg_group, "search_accelerator", DEFAULT_SEARCH_ACCELERATOR);
 
 	// ----- Begin of keybinds -----
 	// TODO make a keybind struct with accelerator and key bundled together.
+	ume.config.add_tab_accelerator = ume_load_config_or(cfg_group, "add_tab_accelerator", DEFAULT_ADD_TAB_ACCELERATOR);
 	ume.config.add_tab_key = ume_load_keybind_or(cfg_group, "add_tab_key", DEFAULT_ADD_TAB_KEY);
+
+	ume.config.del_tab_accelerator = ume_load_config_or(cfg_group, "del_tab_accelerator", DEFAULT_DEL_TAB_ACCELERATOR);
 	ume.config.del_tab_key = ume_load_keybind_or(cfg_group, "del_tab_key", DEFAULT_DEL_TAB_KEY);
+
+	ume.config.move_tab_accelerator = ume_load_config_or(cfg_group, "move_tab_accelerator", DEFAULT_MOVE_TAB_ACCELERATOR);
+	ume.config.switch_tab_accelerator =
+			ume_load_config_or<gint>(cfg_group, "switch_tab_accelerator", DEFAULT_SWITCH_TAB_ACCELERATOR);
 	ume.config.prev_tab_key = ume_load_keybind_or(cfg_group, "prev_tab_key", DEFAULT_PREV_TAB_KEY);
 	ume.config.next_tab_key = ume_load_keybind_or(cfg_group, "next_tab_key", DEFAULT_NEXT_TAB_KEY);
+
+	ume.config.copy_accelerator = ume_load_config_or(cfg_group, "copy_accelerator", DEFAULT_COPY_ACCELERATOR);
 	ume.config.copy_key = ume_load_keybind_or(cfg_group, "copy_key", DEFAULT_COPY_KEY);
 	ume.config.paste_key = ume_load_keybind_or(cfg_group, "paste_key", DEFAULT_PASTE_KEY);
+
+	ume.config.scrollbar_accelerator =
+			ume_load_config_or(cfg_group, "scrollbar_accelerator", DEFAULT_SCROLLBAR_ACCELERATOR);
 	ume.config.scrollbar_key = ume_load_keybind_or(cfg_group, "scrollbar_key", DEFAULT_SCROLLBAR_KEY);
 	ume.config.scroll_up_key = ume_load_keybind_or(cfg_group, "scroll_up_key", DEFAULT_SCROLL_UP_KEY);
 	ume.config.scroll_down_key = ume_load_keybind_or(cfg_group, "scroll_down_key", DEFAULT_SCROLL_DOWN_KEY);
 	ume.config.page_up_key = ume_load_keybind_or(cfg_group, "page_up_key", DEFAULT_PAGE_UP_KEY);
 	ume.config.page_down_key = ume_load_keybind_or(cfg_group, "page_down_key", DEFAULT_PAGE_DOWN_KEY);
+
+	ume.config.set_tab_name_accelerator =
+			ume_load_config_or(cfg_group, "set_tab_name_accelerator", DEFAULT_SET_TAB_NAME_ACCELERATOR);
 	ume.config.set_tab_name_key = ume_load_keybind_or(cfg_group, "set_tab_name_key", DEFAULT_SET_TAB_NAME_KEY);
+
+	ume.config.search_accelerator = ume_load_config_or(cfg_group, "search_accelerator", DEFAULT_SEARCH_ACCELERATOR);
 	ume.config.search_key = ume_load_keybind_or(cfg_group, "search_key", DEFAULT_SEARCH_KEY);
+
+	ume.config.font_size_accelerator =
+			ume_load_config_or(cfg_group, "font_size_accelerator", DEFAULT_FONT_SIZE_ACCELERATOR);
 	ume.config.increase_font_size_key =
 			ume_load_keybind_or(cfg_group, "increase_font_size_key", DEFAULT_INCREASE_FONT_SIZE_KEY);
 	ume.config.decrease_font_size_key =
 			ume_load_keybind_or(cfg_group, "decrease_font_size_key", DEFAULT_DECREASE_FONT_SIZE_KEY);
+
 	ume.config.fullscreen_key = ume_load_keybind_or(cfg_group, "fullscreen_key", DEFAULT_FULLSCREEN_KEY);
 
+	ume.config.set_colorset_accelerator =
+			ume_load_config_or(cfg_group, "set_colorset_accelerator", DEFAULT_SELECT_COLORSET_ACCELERATOR);
 	for (int i = 0; i < NUM_COLORSETS; ++i) {
 		char key_name[32];
 		sprintf(key_name, COLOR_SWITCH_KEY, i + 1);
 		ume.config.set_colorset_keys[i] = ume_load_keybind_or(cfg_group, key_name, cs_keys[i]);
 	}
 
+	ume.config.open_url_accelerator = ume_load_config_or(cfg_group, "open_url_accelerator", DEFAULT_OPEN_URL_ACCELERATOR);
+
 	// ------ End of keybindings -----
-	ume.config.set_colorset_accelerator =
-			ume_load_config_or(cfg_group, "set_colorset_accelerator", DEFAULT_SELECT_COLORSET_ACCELERATOR);
 	ume.config.icon = ume_load_config_or(cfg_group, "icon_file", ICON_FILE);
 
 	/* set default title pattern from config or NULL */

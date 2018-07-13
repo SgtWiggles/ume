@@ -1,24 +1,83 @@
 #pragma once
 #include <gdk/gdk.h>
 
-#include "defaults.h"
-struct term_colors {
-	GdkRGBA forecolors[NUM_COLORSETS];
-	GdkRGBA backcolors[NUM_COLORSETS];
-	GdkRGBA curscolors[NUM_COLORSETS];
-	GdkRGBA palettes[NUM_COLORSETS][PALETTE_SIZE];
+#include <algorithm>
+#include <string>
 
-	term_colors &operator=(const term_colors &other) {
-		for (int i = 0; i < NUM_COLORSETS; ++i) {
-			forecolors[i] = other.forecolors[i];
-			backcolors[i] = other.backcolors[i];
-			curscolors[i] = other.curscolors[i];
-			for (int j = 0; j < PALETTE_SIZE; ++j)
-				palettes[i][j] = other.palettes[i][j];
-		}
-		return *this;
-	}
+#include "defaults.h"
+using palette_t = std::array<GdkRGBA, PALETTE_SIZE>;
+struct term_colors_t {
+	std::array<GdkRGBA, NUM_COLORSETS> forecolors;
+	std::array<GdkRGBA, NUM_COLORSETS> backcolors;
+	std::array<GdkRGBA, NUM_COLORSETS> curscolors;
+	std::array<palette_t, NUM_COLORSETS> palettes;
 };
+
+struct keybind_t {
+	gint key = GDK_KEY_VoidSymbol;
+	gint accelerator = 0;
+};
+
+struct keybind_t parse_keybind(const char *cstr) {
+	const std::string sep = "+";
+	keybind_t bind;
+
+	auto str = std::string(cstr);
+	if (str.size() == 0) // Empty strings are unbound keys
+		return bind;
+
+	str.erase(std::remove_if(std::begin(str), std::end(str), isspace), std::end(str));
+	std::transform(std::begin(str), std::end(str), std::begin(str), toupper);
+	str.push_back('+');
+
+	size_t pos = 0;
+	std::string tok;
+
+	while ((pos = str.find(sep)) != std::string::npos) {
+		tok = str.substr(0, pos);
+		if (tok == "SHIFT") {
+			bind.accelerator |= GDK_SHIFT_MASK;
+		} else if (tok == "LOCK" || tok == "CAPS") {
+			bind.accelerator |= GDK_LOCK_MASK;
+		} else if (tok == "CONTROL" || tok == "CTRL") {
+			bind.accelerator |= GDK_CONTROL_MASK;
+		} else if (tok == "MOD1" || tok == "ALT") {
+			bind.accelerator |= GDK_MOD1_MASK;
+		} else if (tok == "MOD2") {
+			bind.accelerator |= GDK_MOD2_MASK;
+		} else if (tok == "MOD3") {
+			bind.accelerator |= GDK_MOD3_MASK;
+		} else if (tok == "MOD4") {
+			bind.accelerator |= GDK_MOD4_MASK;
+		} else if (tok == "MOD5") {
+			bind.accelerator |= GDK_MOD5_MASK;
+		} else if (tok == "BUTTON1") {
+			bind.accelerator |= GDK_BUTTON1_MASK;
+		} else if (tok == "BUTTON2") {
+			bind.accelerator |= GDK_BUTTON2_MASK;
+		} else if (tok == "BUTTON3") {
+			bind.accelerator |= GDK_BUTTON3_MASK;
+		} else if (tok == "BUTTON4") {
+			bind.accelerator |= GDK_BUTTON4_MASK;
+		} else if (tok == "BUTTON5") {
+			bind.accelerator |= GDK_BUTTON5_MASK;
+		} else if (tok == "SUPER") {
+			bind.accelerator |= GDK_SUPER_MASK;
+		} else if (tok == "HYPER") {
+			bind.accelerator |= GDK_HYPER_MASK;
+		} else if (tok == "META") {
+			bind.accelerator |= GDK_META_MASK;
+		} else if (bind.key == GDK_KEY_VoidSymbol) {
+			bind.key = gdk_keyval_from_name(tok.c_str());
+		} else {
+			fprintf(stderr, "Error parsing keybind, multiple keys defined or unknown key in string \"%s\" (token: \"%s\")\n",
+							cstr, tok.c_str());
+		}
+		str.erase(0, pos + sep.size());
+	}
+
+	return bind;
+}
 
 struct config_t {
 	gint scroll_lines;
@@ -53,38 +112,47 @@ struct config_t {
 
 	gchar *tab_default_title;
 	gint last_colorset;
+
+	gint open_url_accelerator;
+
 	gint add_tab_accelerator;
+	gint add_tab_key;
+
 	gint del_tab_accelerator;
+	gint del_tab_key;
+
 	gint switch_tab_accelerator;
 	gint move_tab_accelerator;
-	gint copy_accelerator;
-	gint scrollbar_accelerator;
-	gint open_url_accelerator;
-	gint font_size_accelerator;
-	gint set_tab_name_accelerator;
-	gint search_accelerator;
-	gint set_colorset_accelerator;
-	gint add_tab_key;
-	gint del_tab_key;
 	gint prev_tab_key;
 	gint next_tab_key;
+
+	gint copy_accelerator;
 	gint copy_key;
 	gint paste_key;
 
+	gint scrollbar_accelerator;
 	gint scrollbar_key;
 	gint scroll_up_key;
 	gint scroll_down_key;
 	gint page_up_key;
 	gint page_down_key;
 
+	gint set_tab_name_accelerator;
 	gint set_tab_name_key;
+
+	gint search_accelerator;
 	gint search_key;
+
 	gint fullscreen_key;
+
+	gint font_size_accelerator;
 	gint increase_font_size_key;
 	gint decrease_font_size_key;
-	gint set_colorset_keys[NUM_COLORSETS];
+
+	gint set_colorset_accelerator;
+	std::array<gint, NUM_COLORSETS> set_colorset_keys;
 
 	VteRegex *http_vteregexp, *mail_vteregexp;
 
-	term_colors colors;
+	term_colors_t colors;
 };
