@@ -115,15 +115,18 @@ Key bindings can be unbound by erasing the field and leaving it blank.
 
 ### TODO
 - [ ] Clean up code base  
-- [x] Remove wall of warnings when building  
-- [ ] Better way to configure modifier keys   
-- [x] Change booleans in config file to true false values  
+- [ ] Better way to configure modifier keys (replace accelerator numbers with strings)  
 - [ ] Change yes/no in config file to true false values  
 - [ ] Update [INSTALL](INSTALL)  
 - [ ] Reload settings keybind
-- [ ] Fix the automated reloading system to prevent overwrites.
+- [ ] Replace automated reloading with signals
+
+- [x] Change booleans in config file to true false values  
+- [x] Remove wall of warnings when building 
 - [x] Add shell colors to color menu  
 - [x] Programmatically manipulate ume while it is running  
+
+- [ ] ~~Fix the automated reloading system to prevent overwrites.~~
 
 ## License
 
