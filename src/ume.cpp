@@ -1001,18 +1001,18 @@ static void ume_set_colors() {
 #define COLOR_BUTTON_ID "color_button%d"
 static void ume_color_dialog_changed(GtkWidget *widget, void *data) {
 	GtkDialog *dialog = (GtkDialog *)data;
-	GtkColorButton *fore_button = g_object_get_data(G_OBJECT(dialog), "fg_button");
-	GtkColorButton *back_button = g_object_get_data(G_OBJECT(dialog), "bg_button");
-	GtkColorButton *curs_button = g_object_get_data(G_OBJECT(dialog), "curs_button");
-	GtkComboBox *set = g_object_get_data(G_OBJECT(dialog), "set_combo");
-	GtkSpinButton *opacity_spin = g_object_get_data(G_OBJECT(dialog), "opacity_spin");
+	GtkColorButton *fore_button = (GtkColorButton *)g_object_get_data(G_OBJECT(dialog), "fg_button");
+	GtkColorButton *back_button = (GtkColorButton *)g_object_get_data(G_OBJECT(dialog), "bg_button");
+	GtkColorButton *curs_button = (GtkColorButton *)g_object_get_data(G_OBJECT(dialog), "curs_button");
+	GtkComboBox *set = (GtkComboBox *)g_object_get_data(G_OBJECT(dialog), "set_combo");
+	GtkSpinButton *opacity_spin = (GtkSpinButton *)g_object_get_data(G_OBJECT(dialog), "opacity_spin");
 	int selected = gtk_combo_box_get_active(set);
 
 	std::array<GtkWidget *, PALETTE_SIZE> color_buttons;
-	for (int i = 0; i < color_buttons.size(); ++i) {
+	for (unsigned i = 0; i < color_buttons.size(); ++i) {
 		char temp[64];
 		sprintf(temp, COLOR_BUTTON_ID, i);
-		color_buttons[i] = g_object_get_data(G_OBJECT(dialog), temp);
+		color_buttons[i] = (GtkWidget *)g_object_get_data(G_OBJECT(dialog), temp);
 	}
 
 	/* if we come here as a result of a change in the active colorset,
@@ -1047,7 +1047,6 @@ static void ume_color_dialog_changed(GtkWidget *widget, void *data) {
 static GtkWidget *create_color_button(GtkWidget *dialog, const gchar *label, const GdkRGBA *color,
 																			const gchar *button_id) {
 	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
-	struct terminal *term = ume_get_page_term(ume, page);
 	GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
 
 	if (label != nullptr) {
@@ -1066,7 +1065,7 @@ static GtkWidget *create_color_button(GtkWidget *dialog, const gchar *label, con
 
 static GtkWidget *ume_create_color_dialog(GtkWidget *widget, void *data) {
 	GtkWidget *color_dialog = gtk_dialog_new_with_buttons(_("Select colors"), GTK_WINDOW(ume.main_window),
-																												GTK_DIALOG_MODAL | GTK_DIALOG_USE_HEADER_BAR, _("_Cancel"),
+																												(GTK_DIALOG_MODAL | GTK_DIALOG_USE_HEADER_BAR), _("_Cancel"),
 																												GTK_RESPONSE_CANCEL, _("_Select"), GTK_RESPONSE_ACCEPT, NULL);
 
 	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
@@ -1287,8 +1286,8 @@ static void ume_set_title_dialog(GtkWidget *widget, void *data) {
 	gint response;
 
 	title_dialog = gtk_dialog_new_with_buttons(_("Set window title"), GTK_WINDOW(ume.main_window),
-																						 GTK_DIALOG_MODAL | GTK_DIALOG_USE_HEADER_BAR, _("_Cancel"),
-																						 GTK_RESPONSE_CANCEL, _("_Apply"), GTK_RESPONSE_ACCEPT, NULL);
+																						 (GtkDialogFlags)(GTK_DIALOG_MODAL | GTK_DIALOG_USE_HEADER_BAR),
+																						 _("_Cancel"), GTK_RESPONSE_CANCEL, _("_Apply"), GTK_RESPONSE_ACCEPT, NULL);
 
 	/* Configure the new gtk header bar*/
 	title_header = gtk_dialog_get_header_bar(GTK_DIALOG(title_dialog));
@@ -1786,8 +1785,8 @@ static void ume_reload_config_file(bool readonly) {
 
 	if (ume.cfg_signal_id == 0) { // Only load the monitor signal once!
 		/* Add GFile monitor to control file external changes */
-		GFile *cfgfile = cfgfile = g_file_new_for_path(ume.configfile);
-		ume.cfg_monitor = g_file_monitor_file(cfgfile, 0, NULL, NULL);
+		GFile *cfgfile = g_file_new_for_path(ume.configfile);
+		ume.cfg_monitor = g_file_monitor_file(cfgfile, (GFileMonitorFlags)0, nullptr, nullptr);
 		ume.cfg_signal_id = g_signal_connect(G_OBJECT(ume.cfg_monitor), "changed", G_CALLBACK(ume_conf_changed), NULL);
 	}
 
@@ -1916,7 +1915,6 @@ static void ume_reload_config_file(bool readonly) {
 }
 
 static void ume_init() { // TODO break this glorious mega function .
-
 	ume_reload_config_file(false);
 
 	/* Use always GTK header bar*/
@@ -2088,8 +2086,6 @@ static void ume_init_popup() {
 			gtk_radio_menu_item_new_with_label_from_widget(GTK_RADIO_MENU_ITEM(item_cursor_block), _("IBeam"));
 
 	/* Show defaults in menu items */
-	gchar *cfgtmp = NULL;
-
 	if (ume.config.first_tab) {
 		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_show_first_tab), TRUE);
 	} else {
@@ -2640,8 +2636,8 @@ static void ume_add_tab() {
 				option_hold = FALSE;
 			}
 			vte_terminal_spawn_async(VTE_TERMINAL(term->vte), VTE_PTY_NO_HELPER, cwd, ume.argv, command_env,
-															 G_SPAWN_SEARCH_PATH | G_SPAWN_FILE_AND_ARGV_ZERO, NULL, NULL, NULL, -1, NULL,
-															 ume_spawn_callback, term);
+															 (GSpawnFlags)(G_SPAWN_SEARCH_PATH | G_SPAWN_FILE_AND_ARGV_ZERO), NULL, NULL, NULL, -1,
+															 NULL, ume_spawn_callback, term);
 		}
 		/* Not the first tab */
 	} else {
@@ -2661,8 +2657,8 @@ static void ume_add_tab() {
 		 * says this is for "historical" reasons. Me arse */
 		gtk_notebook_set_current_page(GTK_NOTEBOOK(ume.notebook), index);
 		vte_terminal_spawn_async(VTE_TERMINAL(term->vte), VTE_PTY_NO_HELPER, cwd, ume.argv, command_env,
-														 G_SPAWN_SEARCH_PATH | G_SPAWN_FILE_AND_ARGV_ZERO, NULL, NULL, NULL, -1, NULL,
-														 ume_spawn_callback, term);
+														 (GSpawnFlags)(G_SPAWN_SEARCH_PATH | G_SPAWN_FILE_AND_ARGV_ZERO), NULL, NULL, NULL, -1,
+														 NULL, ume_spawn_callback, term);
 	}
 
 	free(cwd);
@@ -2796,16 +2792,9 @@ static void ume_sanitize_working_directory() {
 }
 
 int main(int argc, char **argv) {
-	gchar *localedir;
-	int i;
-	int n;
-	char **nargv;
-	int nargc;
-	gboolean have_e;
-
 	/* Localization */
 	setlocale(LC_ALL, "");
-	localedir = g_strdup_printf("%s/locale", DATADIR);
+	gchar *localedir = g_strdup_printf("%s/locale", DATADIR);
 	textdomain(GETTEXT_PACKAGE);
 	bindtextdomain(GETTEXT_PACKAGE, localedir);
 	bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
@@ -2815,12 +2804,12 @@ int main(int argc, char **argv) {
 	 * sure GOption doesn't grab any arguments meant for the command being called */
 
 	/* Initialize nargv */
-	nargv = (char **)calloc((argc + 1), sizeof(char *));
-	n = 0;
-	nargc = argc;
-	have_e = FALSE;
+	const char **nargv = (const char **)calloc((argc + 1), sizeof(char *));
+	int n = 0;
+	int nargc = argc;
+	gboolean have_e = FALSE;
 
-	for (i = 0; i < argc; i++) {
+	for (int i = 0; i < argc; i++) {
 		if (!have_e && g_strcmp0(argv[i], "-e") == 0) {
 			nargv[n] = "-e";
 			n++;
@@ -2871,7 +2860,7 @@ int main(int argc, char **argv) {
 	ume_init();
 
 	/* Add initial tabs (1 by default) */
-	for (i = 0; i < option_ntabs; i++)
+	for (int i = 0; i < option_ntabs; i++)
 		ume_add_tab();
 
 	ume_sanitize_working_directory();

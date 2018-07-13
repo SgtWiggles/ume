@@ -54,8 +54,8 @@
 #define COLOR_FOREGROUND_KEY "foreground"
 #define COLOR_BACKGROUND_KEY "background"
 #define COLOR_CURSOR_KEY "cursor"
-#define COLOR_PALETTE_KEY "color%d"
-#define COLOR_SWITCH_KEY "colors%d_key"
+#define COLOR_PALETTE_KEY "color%u"
+#define COLOR_SWITCH_KEY "colors%u_key"
 
 #define PALETTE_SIZE 16
 /* 16 color palettes in GdkRGBA format (red, green, blue, alpha)
