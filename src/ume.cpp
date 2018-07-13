@@ -185,10 +185,12 @@ template <> inline void ume_set_config<const gchar *>(const gchar *group, const 
 	g_key_file_set_string(ume.cfg_file, group, key, value);
 	ume.config_modified = true;
 }
-template <> inline void ume_set_config<gchar *>(const gchar *group, const gchar *key, gchar *value) {
-	g_key_file_set_string(ume.cfg_file, group, key, value);
-	ume.config_modified = true;
-}
+/*
+ *template <> inline void ume_set_config<gchar *>(const gchar *group, const gchar *key, gchar *value) {
+ *  g_key_file_set_string(ume.cfg_file, group, key, value);
+ *  ume.config_modified = true;
+ *}
+ */
 
 template <> inline void ume_set_config<bool>(const char *group, const char *key, bool value) {
 	g_key_file_set_boolean(ume.cfg_file, group, key, value);
@@ -291,14 +293,14 @@ static const char *option_font;
 static const char *option_workdir;
 static const char *option_execute;
 static gchar **option_xterm_args;
-static gboolean option_xterm_execute = FALSE;
-static gboolean option_version = FALSE;
+static gboolean option_xterm_execute = false;
+static gboolean option_version = false;
 static gint option_ntabs = 1;
-static gint option_login = FALSE;
+static gint option_login = false;
 static const char *option_title;
 static const char *option_icon;
 static int option_rows, option_columns;
-static gboolean option_hold = FALSE;
+static gboolean option_hold = false;
 static char *option_config_file;
 static gboolean option_fullscreen;
 static gboolean option_maximize;
@@ -346,7 +348,7 @@ void search(VteTerminal *vte, const char *pattern, bool reverse) {
 	GError *error = NULL;
 	VteRegex *regex;
 
-	vte_terminal_search_set_wrap_around(vte, TRUE);
+	vte_terminal_search_set_wrap_around(vte, true);
 
 	regex = vte_regex_new_for_search(pattern, (gssize)strlen(pattern), PCRE2_MULTILINE | PCRE2_CASELESS, &error);
 	if (!regex) { /* Ubuntu-fucking-morons (17.10 and 18.04) package a broken VTE without PCRE2, and search fails */
@@ -368,10 +370,9 @@ void search(VteTerminal *vte, const char *pattern, bool reverse) {
 // TODO think of a better way to register keybinds
 static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data) {
 	if (event->type != GDK_KEY_PRESS)
-		return FALSE;
+		return false;
 
-	unsigned int topage = 0;
-
+	gint topage = 0;
 	gint npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
 
 	/* Use keycodes instead of keyvals. With keyvals, key bindings work only in US/ISO8859-1 and similar locales */
@@ -381,12 +382,12 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	if ((event->state & ume.config.add_tab_accelerator) == ume.config.add_tab_accelerator &&
 			keycode == ume_tokeycode(ume.config.add_tab_key)) {
 		ume_add_tab();
-		return TRUE;
+		return true;
 	} else if ((event->state & ume.config.del_tab_accelerator) == ume.config.del_tab_accelerator &&
 						 keycode == ume_tokeycode(ume.config.del_tab_key)) {
 		/* Delete current tab */
 		ume_close_tab(NULL, NULL);
-		return TRUE;
+		return true;
 	}
 
 	/* Switch tab keybinding pressed (numbers or next/prev) */
@@ -401,7 +402,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 
 			/* User has explicitly disabled this branch, make sure to propagate the event */
 			if (ume.config.disable_numbered_tabswitch)
-				return FALSE;
+				return false;
 
 			if (ume_tokeycode(GDK_KEY_1) == keycode)
 				topage = 0;
@@ -423,21 +424,21 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 				topage = 8;
 			if (topage <= npages)
 				gtk_notebook_set_current_page(GTK_NOTEBOOK(ume.notebook), topage);
-			return TRUE;
+			return true;
 		} else if (keycode == ume_tokeycode(ume.config.prev_tab_key)) {
 			if (gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook)) == 0) {
 				gtk_notebook_set_current_page(GTK_NOTEBOOK(ume.notebook), npages - 1);
 			} else {
 				gtk_notebook_prev_page(GTK_NOTEBOOK(ume.notebook));
 			}
-			return TRUE;
+			return true;
 		} else if (keycode == ume_tokeycode(ume.config.next_tab_key)) {
 			if (gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook)) == (npages - 1)) {
 				gtk_notebook_set_current_page(GTK_NOTEBOOK(ume.notebook), 0);
 			} else {
 				gtk_notebook_next_page(GTK_NOTEBOOK(ume.notebook));
 			}
-			return TRUE;
+			return true;
 		}
 	}
 
@@ -445,10 +446,10 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	if (((event->state & ume.config.move_tab_accelerator) == ume.config.move_tab_accelerator)) {
 		if (keycode == ume_tokeycode(ume.config.prev_tab_key)) {
 			ume_move_tab(BACKWARDS);
-			return TRUE;
+			return true;
 		} else if (keycode == ume_tokeycode(ume.config.next_tab_key)) {
 			ume_move_tab(FORWARD);
-			return TRUE;
+			return true;
 		}
 	}
 
@@ -456,10 +457,10 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	if ((event->state & ume.config.copy_accelerator) == ume.config.copy_accelerator) {
 		if (keycode == ume_tokeycode(ume.config.copy_key)) {
 			ume_copy(NULL, NULL);
-			return TRUE;
+			return true;
 		} else if (keycode == ume_tokeycode(ume.config.paste_key)) {
 			ume_paste(NULL, NULL);
-			return TRUE;
+			return true;
 		}
 	}
 
@@ -467,7 +468,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	if ((event->state & ume.config.scrollbar_accelerator) == ume.config.scrollbar_accelerator) {
 		if (keycode == ume_tokeycode(ume.config.scrollbar_key)) {
 			ume_show_scrollbar(NULL, NULL);
-			return TRUE;
+			return true;
 		}
 	}
 
@@ -475,7 +476,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	if ((event->state & ume.config.set_tab_name_accelerator) == ume.config.set_tab_name_accelerator) {
 		if (keycode == ume_tokeycode(ume.config.set_tab_name_key)) {
 			ume_set_name_dialog(NULL, NULL);
-			return TRUE;
+			return true;
 		}
 	}
 
@@ -483,7 +484,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	if ((event->state & ume.config.search_accelerator) == ume.config.search_accelerator) {
 		if (keycode == ume_tokeycode(ume.config.search_key)) {
 			ume_search_dialog(NULL, NULL);
-			return TRUE;
+			return true;
 		}
 	}
 
@@ -491,10 +492,10 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	if ((event->state & ume.config.font_size_accelerator) == ume.config.font_size_accelerator) {
 		if (keycode == ume_tokeycode(ume.config.increase_font_size_key)) {
 			ume_increase_font(NULL, NULL);
-			return TRUE;
+			return true;
 		} else if (keycode == ume_tokeycode(ume.config.decrease_font_size_key)) {
 			ume_decrease_font(NULL, NULL);
-			return TRUE;
+			return true;
 		}
 	}
 
@@ -522,14 +523,14 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 		if (scroll_amount != 0) {
 			GtkAdjustment *adjust = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(vte));
 			gtk_adjustment_set_value(adjust, gtk_adjustment_get_value(adjust) + scroll_amount);
-			return TRUE;
+			return true;
 		}
 	}
 
 	/* F11 (fullscreen) pressed */
 	if (keycode == ume_tokeycode(ume.config.fullscreen_key)) {
 		ume_fullscreen(NULL, NULL);
-		return TRUE;
+		return true;
 	}
 
 	/* Change in colorset */
@@ -538,11 +539,11 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 		for (i = 0; i < NUM_COLORSETS; i++) {
 			if (keycode == ume_tokeycode(ume.config.set_colorset_keys[i])) {
 				ume_set_colorset(i);
-				return TRUE;
+				return true;
 			}
 		}
 	}
-	return FALSE;
+	return false;
 }
 
 // On click function
@@ -551,7 +552,7 @@ static gboolean ume_button_press(GtkWidget *widget, GdkEventButton *button_event
 	gint page, tag;
 
 	if (button_event->type != GDK_BUTTON_PRESS)
-		return FALSE;
+		return false;
 
 	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
 	term = ume_get_page_term(ume, page);
@@ -566,7 +567,7 @@ static gboolean ume_button_press(GtkWidget *widget, GdkEventButton *button_event
 
 		ume_open_url(NULL, NULL);
 
-		return TRUE;
+		return true;
 	}
 
 	/* Right button: show the popup menu */
@@ -601,20 +602,20 @@ static gboolean ume_button_press(GtkWidget *widget, GdkEventButton *button_event
 
 		gtk_menu_popup_at_pointer(menu, (GdkEvent *)button_event);
 
-		return TRUE;
+		return true;
 	}
 
-	return FALSE;
+	return false;
 }
 
 static gboolean ume_focus_in(GtkWidget *widget, GdkEvent *event, void *data) {
 	if (event->type != GDK_FOCUS_CHANGE)
-		return FALSE;
+		return false;
 
 	/* Ignore first focus event */
 	if (ume.first_focus) {
 		ume.first_focus = false;
-		return FALSE;
+		return false;
 	}
 
 	if (!ume.focused) {
@@ -625,15 +626,15 @@ static gboolean ume_focus_in(GtkWidget *widget, GdkEvent *event, void *data) {
 		}
 
 		ume_set_colors();
-		return TRUE;
+		return true;
 	}
 
-	return FALSE;
+	return false;
 }
 
 static gboolean ume_focus_out(GtkWidget *widget, GdkEvent *event, void *data) {
 	if (event->type != GDK_FOCUS_CHANGE)
-		return FALSE;
+		return false;
 
 	if (ume.focused) {
 		ume.focused = false;
@@ -643,10 +644,10 @@ static gboolean ume_focus_out(GtkWidget *widget, GdkEvent *event, void *data) {
 		}
 
 		ume_set_colors();
-		return TRUE;
+		return true;
 	}
 
-	return FALSE;
+	return false;
 }
 
 /* Handler for notebook scroll-event - switches tabs by scroll direction
@@ -681,7 +682,7 @@ static gboolean ume_notebook_scroll(GtkWidget *widget, GdkEventScroll *event) {
 			break;
 	}
 
-	return FALSE;
+	return false;
 }
 
 static void ume_page_removed(GtkWidget *widget, void *data) {
@@ -695,10 +696,10 @@ static void ume_page_removed(GtkWidget *widget, void *data) {
 static void ume_beep(GtkWidget *widget, void *data) {
 	// Remove the urgency hint. This is necessary to signal the window manager
 	// that a new urgent event happened when the urgent hint is set after this.
-	gtk_window_set_urgency_hint(GTK_WINDOW(ume.main_window), FALSE);
+	gtk_window_set_urgency_hint(GTK_WINDOW(ume.main_window), false);
 
 	if (ume.config.urgent_bell) {
-		gtk_window_set_urgency_hint(GTK_WINDOW(ume.main_window), TRUE);
+		gtk_window_set_urgency_hint(GTK_WINDOW(ume.main_window), true);
 	}
 }
 
@@ -711,7 +712,9 @@ static void ume_increase_font(GtkWidget *widget, void *data) {
 	pango_font_description_set_size(ume.config.font, new_size);
 	ume_set_font();
 	ume_set_size();
-	ume_set_config(cfg_group, "font", pango_font_description_to_string(ume.config.font));
+	const char *descriptor = pango_font_description_to_string(ume.config.font);
+	ume_set_config(cfg_group, "font", descriptor);
+	g_free((void *)descriptor);
 }
 
 static void ume_decrease_font(GtkWidget *widget, void *data) {
@@ -725,7 +728,9 @@ static void ume_decrease_font(GtkWidget *widget, void *data) {
 		pango_font_description_set_size(ume.config.font, new_size);
 		ume_set_font();
 		ume_set_size();
-		ume_set_config(cfg_group, "font", pango_font_description_to_string(ume.config.font));
+		const char *descriptor = pango_font_description_to_string(ume.config.font);
+		ume_set_config(cfg_group, "font", descriptor);
+		g_free((void *)descriptor);
 	}
 }
 
@@ -742,7 +747,7 @@ static void ume_child_exited(GtkWidget *widget, void *data) {
 		ume_config_done();
 	}
 
-	if (option_hold == TRUE) {
+	if (option_hold == true) {
 		SAY("hold option has been activated");
 		return;
 	}
@@ -774,7 +779,7 @@ static void ume_eof(GtkWidget *widget, void *data) {
 	if (gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook)) == 0) {
 		struct terminal *term = ume_get_page_term(ume, 0);
 
-		if (option_hold == TRUE) {
+		if (option_hold == true) {
 			SAY("hold option has been activated");
 			return;
 		}
@@ -868,7 +873,7 @@ static void ume_config_done() {
 				g_error_free(gerror);
 				exit(EXIT_FAILURE);
 			}
-			g_io_channel_shutdown(cfgfile, TRUE, &gerror);
+			g_io_channel_shutdown(cfgfile, true, &gerror);
 			g_io_channel_unref(cfgfile);
 		}
 	}
@@ -876,7 +881,7 @@ static void ume_config_done() {
 
 static gboolean ume_delete_event(GtkWidget *widget, void *data) {
 	ume_config_done();
-	return FALSE;
+	return false;
 }
 
 static void ume_destroy_window(GtkWidget *widget, void *data) {
@@ -899,7 +904,9 @@ static void ume_font_dialog(GtkWidget *widget, void *data) {
 		ume.config.font = gtk_font_chooser_get_font_desc(GTK_FONT_CHOOSER(font_dialog));
 		ume_set_font();
 		ume_set_size();
-		ume_set_config(cfg_group, "font", pango_font_description_to_string(ume.config.font));
+		const char *descriptor = pango_font_description_to_string(ume.config.font);
+		ume_set_config(cfg_group, "font", descriptor);
+		g_free((void *)descriptor);
 	}
 
 	gtk_widget_destroy(font_dialog);
@@ -918,12 +925,12 @@ static void ume_set_name_dialog(GtkWidget *widget, void *data) { // TODO break t
 	term = ume_get_page_term(ume, page);
 
 	input_dialog = gtk_dialog_new_with_buttons(_("Set tab name"), GTK_WINDOW(ume.main_window),
-																						 GTK_DIALOG_MODAL | GTK_DIALOG_USE_HEADER_BAR, _("_Cancel"),
-																						 GTK_RESPONSE_CANCEL, _("_Apply"), GTK_RESPONSE_ACCEPT, NULL);
+																						 (GtkDialogFlags)(GTK_DIALOG_MODAL | GTK_DIALOG_USE_HEADER_BAR),
+																						 _("_Cancel"), GTK_RESPONSE_CANCEL, _("_Apply"), GTK_RESPONSE_ACCEPT, NULL);
 
 	/* Configure the new gtk header bar*/
 	input_header = gtk_dialog_get_header_bar(GTK_DIALOG(input_dialog));
-	gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(input_header), FALSE);
+	gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(input_header), false);
 	gtk_dialog_set_default_response(GTK_DIALOG(input_dialog), GTK_RESPONSE_ACCEPT);
 
 	/* Set style */
@@ -942,14 +949,14 @@ static void ume_set_name_dialog(GtkWidget *widget, void *data) { // TODO break t
 	if (text) {
 		gtk_entry_set_text(GTK_ENTRY(entry), text);
 	}
-	gtk_entry_set_activates_default(GTK_ENTRY(entry), TRUE);
-	gtk_box_pack_start(GTK_BOX(name_hbox), label, TRUE, TRUE, 12);
-	gtk_box_pack_start(GTK_BOX(name_hbox), entry, TRUE, TRUE, 12);
-	gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(input_dialog))), name_hbox, FALSE, FALSE, 12);
+	gtk_entry_set_activates_default(GTK_ENTRY(entry), true);
+	gtk_box_pack_start(GTK_BOX(name_hbox), label, true, true, 12);
+	gtk_box_pack_start(GTK_BOX(name_hbox), entry, true, true, 12);
+	gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(input_dialog))), name_hbox, false, false, 12);
 
 	/* Disable accept button until some text is entered */
 	g_signal_connect(G_OBJECT(entry), "changed", G_CALLBACK(ume_setname_entry_changed), input_dialog);
-	gtk_dialog_set_response_sensitive(GTK_DIALOG(input_dialog), GTK_RESPONSE_ACCEPT, FALSE);
+	gtk_dialog_set_response_sensitive(GTK_DIALOG(input_dialog), GTK_RESPONSE_ACCEPT, false);
 
 	gtk_widget_show_all(name_hbox);
 
@@ -1046,16 +1053,16 @@ static void ume_color_dialog_changed(GtkWidget *widget, void *data) {
 
 static GtkWidget *create_color_button(GtkWidget *dialog, const gchar *label, const GdkRGBA *color,
 																			const gchar *button_id) {
-	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
+	// gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
 	GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
 
 	if (label != nullptr) {
 		GtkWidget *blabel = gtk_label_new(label);
-		gtk_box_pack_start(GTK_BOX(hbox), blabel, FALSE, FALSE, 6);
+		gtk_box_pack_start(GTK_BOX(hbox), blabel, false, false, 6);
 	}
 
 	GtkWidget *button = gtk_color_button_new_with_rgba(color);
-	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 6);
+	gtk_box_pack_end(GTK_BOX(hbox), button, false, false, 6);
 
 	g_signal_connect(G_OBJECT(button), "color-set", G_CALLBACK(ume_color_dialog_changed), dialog);
 	if (button_id != nullptr)
@@ -1064,9 +1071,9 @@ static GtkWidget *create_color_button(GtkWidget *dialog, const gchar *label, con
 }
 
 static GtkWidget *ume_create_color_dialog(GtkWidget *widget, void *data) {
-	GtkWidget *color_dialog = gtk_dialog_new_with_buttons(_("Select colors"), GTK_WINDOW(ume.main_window),
-																												(GTK_DIALOG_MODAL | GTK_DIALOG_USE_HEADER_BAR), _("_Cancel"),
-																												GTK_RESPONSE_CANCEL, _("_Select"), GTK_RESPONSE_ACCEPT, NULL);
+	GtkWidget *color_dialog = gtk_dialog_new_with_buttons(
+			_("Select colors"), GTK_WINDOW(ume.main_window), (GtkDialogFlags)(GTK_DIALOG_MODAL | GTK_DIALOG_USE_HEADER_BAR),
+			_("_Cancel"), GTK_RESPONSE_CANCEL, _("_Select"), GTK_RESPONSE_ACCEPT, NULL);
 
 	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
 	struct terminal *term = ume_get_page_term(ume, page);
@@ -1086,7 +1093,7 @@ static GtkWidget *ume_create_color_dialog(GtkWidget *widget, void *data) {
 
 	/* Configure the new gtk header bar*/
 	GtkWidget *color_header = gtk_dialog_get_header_bar(GTK_DIALOG(color_dialog));
-	gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(color_header), FALSE);
+	gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(color_header), false);
 	gtk_dialog_set_default_response(GTK_DIALOG(color_dialog), GTK_RESPONSE_ACCEPT);
 
 	/* Set style */
@@ -1097,7 +1104,8 @@ static GtkWidget *ume_create_color_dialog(GtkWidget *widget, void *data) {
 	g_free(css);
 
 	/* Add the drop-down combobox that selects current colorset to edit. */
-	GtkWidget *hbox_sets = gtk_box_new(FALSE, 12);
+	GtkWidget *hbox_sets = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+
 	GtkWidget *set_label = gtk_label_new("Colorset");
 	GtkWidget *set_combo = gtk_combo_box_text_new();
 	gchar combo_text[3];
@@ -1119,24 +1127,24 @@ static GtkWidget *ume_create_color_dialog(GtkWidget *widget, void *data) {
 			gtk_box_new(GTK_ORIENTATION_VERTICAL, 12), gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12),
 			gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12), gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12)};
 
-	gtk_box_pack_start(GTK_BOX(hbox_sets), set_label, FALSE, FALSE, 12);
-	gtk_box_pack_end(GTK_BOX(hbox_sets), set_combo, FALSE, FALSE, 12);
-	gtk_box_pack_start(GTK_BOX(hbox_opacity), opacity_label, FALSE, FALSE, 12);
-	gtk_box_pack_end(GTK_BOX(hbox_opacity), opacity_spin, FALSE, FALSE, 12);
+	gtk_box_pack_start(GTK_BOX(hbox_sets), set_label, false, false, 12);
+	gtk_box_pack_end(GTK_BOX(hbox_sets), set_combo, false, false, 12);
+	gtk_box_pack_start(GTK_BOX(hbox_opacity), opacity_label, false, false, 12);
+	gtk_box_pack_end(GTK_BOX(hbox_opacity), opacity_spin, false, false, 12);
 
-	gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(color_dialog))), hbox_sets, FALSE, FALSE, 6);
+	gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(color_dialog))), hbox_sets, false, false, 6);
 	for (auto btn : special_buttons)
-		gtk_box_pack_start(GTK_BOX(content_boxes[0]), btn, FALSE, FALSE, 0);
-	gtk_box_pack_start(GTK_BOX(content_boxes[1]), gtk_label_new("Palette: "), FALSE, FALSE, 6);
+		gtk_box_pack_start(GTK_BOX(content_boxes[0]), btn, false, false, 0);
+	gtk_box_pack_start(GTK_BOX(content_boxes[1]), gtk_label_new("Palette: "), false, false, 6);
 
 	for (int i = 0; i < PALETTE_SIZE / 2; ++i)
-		gtk_box_pack_start(GTK_BOX(content_boxes[2]), color_buttons[i], FALSE, FALSE, 0);
+		gtk_box_pack_start(GTK_BOX(content_boxes[2]), color_buttons[i], false, false, 0);
 	for (int i = PALETTE_SIZE / 2; i < PALETTE_SIZE; ++i)
-		gtk_box_pack_start(GTK_BOX(content_boxes[3]), color_buttons[i], FALSE, FALSE, 0);
+		gtk_box_pack_start(GTK_BOX(content_boxes[3]), color_buttons[i], false, false, 0);
 
 	for (auto box : content_boxes)
-		gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(color_dialog))), box, FALSE, FALSE, 6);
-	gtk_box_pack_end(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(color_dialog))), hbox_opacity, FALSE, FALSE, 6);
+		gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(color_dialog))), box, false, false, 6);
+	gtk_box_pack_end(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(color_dialog))), hbox_opacity, false, false, 6);
 
 	gtk_widget_show_all(gtk_dialog_get_content_area(GTK_DIALOG(color_dialog)));
 
@@ -1167,19 +1175,20 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 			char group[20];
 			sprintf(group, COLOR_GROUP_KEY, i + 1);
 
-			auto cfgtmp = std::unique_ptr<gchar, g_free_deleter>(gdk_rgba_to_string(&ume.config.colors.forecolors[i]));
+			auto cfgtmp = std::unique_ptr<const gchar, g_free_deleter>(gdk_rgba_to_string(&ume.config.colors.forecolors[i]));
 			ume_set_config(group, COLOR_FOREGROUND_KEY, cfgtmp.get());
 
-			cfgtmp = std::unique_ptr<gchar, g_free_deleter>(gdk_rgba_to_string(&ume.config.colors.backcolors[i]));
+			cfgtmp = std::unique_ptr<const gchar, g_free_deleter>(gdk_rgba_to_string(&ume.config.colors.backcolors[i]));
 			ume_set_config(group, COLOR_BACKGROUND_KEY, cfgtmp.get());
 
-			cfgtmp = std::unique_ptr<gchar, g_free_deleter>(gdk_rgba_to_string(&ume.config.colors.curscolors[i]));
+			cfgtmp = std::unique_ptr<const gchar, g_free_deleter>(gdk_rgba_to_string(&ume.config.colors.curscolors[i]));
 			ume_set_config(group, COLOR_CURSOR_KEY, cfgtmp.get());
 
 			for (int j = 0; j < PALETTE_SIZE; ++j) {
 				char temp_name[32];
 				sprintf(temp_name, COLOR_PALETTE_KEY, j);
-				auto cfgstr = std::unique_ptr<gchar, g_free_deleter>(gdk_rgba_to_string(&ume.config.colors.palettes[i][j]));
+				auto cfgstr =
+						std::unique_ptr<const gchar, g_free_deleter>(gdk_rgba_to_string(&ume.config.colors.palettes[i][j]));
 				ume_set_config(group, temp_name, cfgstr.get());
 			}
 		}
@@ -1238,12 +1247,12 @@ static void ume_search_dialog(GtkWidget *widget, void *data) { // TODO: (low) in
 	gint response;
 
 	title_dialog = gtk_dialog_new_with_buttons(_("Search"), GTK_WINDOW(ume.main_window),
-																						 GTK_DIALOG_MODAL | GTK_DIALOG_USE_HEADER_BAR, _("_Cancel"),
-																						 GTK_RESPONSE_CANCEL, _("_Apply"), GTK_RESPONSE_ACCEPT, NULL);
+																						 (GtkDialogFlags)(GTK_DIALOG_MODAL | GTK_DIALOG_USE_HEADER_BAR),
+																						 _("_Cancel"), GTK_RESPONSE_CANCEL, _("_Apply"), GTK_RESPONSE_ACCEPT, NULL);
 
 	/* Configure the new gtk header bar*/
 	title_header = gtk_dialog_get_header_bar(GTK_DIALOG(title_dialog));
-	gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(title_header), FALSE);
+	gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(title_header), false);
 	gtk_dialog_set_default_response(GTK_DIALOG(title_dialog), GTK_RESPONSE_ACCEPT);
 
 	/* Set style */
@@ -1256,14 +1265,14 @@ static void ume_search_dialog(GtkWidget *widget, void *data) { // TODO: (low) in
 	entry = gtk_entry_new();
 	label = gtk_label_new(_("Search"));
 	title_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-	gtk_entry_set_activates_default(GTK_ENTRY(entry), TRUE);
-	gtk_box_pack_start(GTK_BOX(title_hbox), label, TRUE, TRUE, 12);
-	gtk_box_pack_start(GTK_BOX(title_hbox), entry, TRUE, TRUE, 12);
-	gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(title_dialog))), title_hbox, FALSE, FALSE, 12);
+	gtk_entry_set_activates_default(GTK_ENTRY(entry), true);
+	gtk_box_pack_start(GTK_BOX(title_hbox), label, true, true, 12);
+	gtk_box_pack_start(GTK_BOX(title_hbox), entry, true, true, 12);
+	gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(title_dialog))), title_hbox, false, false, 12);
 
 	/* Disable accept button until some text is entered */
 	g_signal_connect(G_OBJECT(entry), "changed", G_CALLBACK(ume_setname_entry_changed), title_dialog);
-	gtk_dialog_set_response_sensitive(GTK_DIALOG(title_dialog), GTK_RESPONSE_ACCEPT, FALSE);
+	gtk_dialog_set_response_sensitive(GTK_DIALOG(title_dialog), GTK_RESPONSE_ACCEPT, false);
 
 	gtk_widget_show_all(title_hbox);
 
@@ -1291,7 +1300,7 @@ static void ume_set_title_dialog(GtkWidget *widget, void *data) {
 
 	/* Configure the new gtk header bar*/
 	title_header = gtk_dialog_get_header_bar(GTK_DIALOG(title_dialog));
-	gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(title_header), FALSE);
+	gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(title_header), false);
 	gtk_dialog_set_default_response(GTK_DIALOG(title_dialog), GTK_RESPONSE_ACCEPT);
 
 	/* Set style */
@@ -1306,14 +1315,14 @@ static void ume_set_title_dialog(GtkWidget *widget, void *data) {
 	title_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 	/* Set window label as entry default text */
 	gtk_entry_set_text(GTK_ENTRY(entry), gtk_window_get_title(GTK_WINDOW(ume.main_window)));
-	gtk_entry_set_activates_default(GTK_ENTRY(entry), TRUE);
-	gtk_box_pack_start(GTK_BOX(title_hbox), label, TRUE, TRUE, 12);
-	gtk_box_pack_start(GTK_BOX(title_hbox), entry, TRUE, TRUE, 12);
-	gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(title_dialog))), title_hbox, FALSE, FALSE, 12);
+	gtk_entry_set_activates_default(GTK_ENTRY(entry), true);
+	gtk_box_pack_start(GTK_BOX(title_hbox), label, true, true, 12);
+	gtk_box_pack_start(GTK_BOX(title_hbox), entry, true, true, 12);
+	gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(title_dialog))), title_hbox, false, false, 12);
 
 	/* Disable accept button until some text is entered */
 	g_signal_connect(G_OBJECT(entry), "changed", G_CALLBACK(ume_setname_entry_changed), title_dialog);
-	gtk_dialog_set_response_sensitive(GTK_DIALOG(title_dialog), GTK_RESPONSE_ACCEPT, FALSE);
+	gtk_dialog_set_response_sensitive(GTK_DIALOG(title_dialog), GTK_RESPONSE_ACCEPT, false);
 
 	gtk_widget_show_all(title_hbox);
 
@@ -1371,13 +1380,13 @@ static void ume_open_mail(GtkWidget *widget, void *data) {
 
 static void ume_show_first_tab(GtkWidget *widget, void *data) {
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
-		gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), TRUE);
+		gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), true);
 		ume_set_config(cfg_group, "show_always_first_tab", "Yes");
 		ume.config.first_tab = true;
 	} else {
 		/* Only hide tabs if the notebook has one page */
 		if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook)) == 1) {
-			gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), FALSE);
+			gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), false);
 		}
 		ume_set_config(cfg_group, "show_always_first_tab", "No");
 		ume.config.first_tab = false;
@@ -1389,28 +1398,28 @@ static void ume_show_first_tab(GtkWidget *widget, void *data) {
 static void ume_tabs_on_bottom(GtkWidget *widget, void *data) {
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
 		gtk_notebook_set_tab_pos(GTK_NOTEBOOK(ume.notebook), GTK_POS_BOTTOM);
-		ume_set_config(cfg_group, "tabs_on_bottom", TRUE);
+		ume_set_config(cfg_group, "tabs_on_bottom", true);
 	} else {
 		gtk_notebook_set_tab_pos(GTK_NOTEBOOK(ume.notebook), GTK_POS_TOP);
-		ume_set_config(cfg_group, "tabs_on_bottom", FALSE);
+		ume_set_config(cfg_group, "tabs_on_bottom", false);
 	}
 }
 
 static void ume_less_questions(GtkWidget *widget, void *data) {
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
-		ume.config.less_questions = TRUE;
-		ume_set_config(cfg_group, "less_questions", TRUE);
+		ume.config.less_questions = true;
+		ume_set_config(cfg_group, "less_questions", true);
 	} else {
-		ume.config.less_questions = FALSE;
-		ume_set_config(cfg_group, "less_questions", FALSE);
+		ume.config.less_questions = false;
+		ume_set_config(cfg_group, "less_questions", false);
 	}
 }
 
 static void ume_show_close_button(GtkWidget *widget, void *data) {
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
-		ume_set_config(cfg_group, "closebutton", TRUE);
+		ume_set_config(cfg_group, "closebutton", true);
 	} else {
-		ume_set_config(cfg_group, "closebutton", FALSE);
+		ume_set_config(cfg_group, "closebutton", false);
 	}
 }
 
@@ -1423,10 +1432,10 @@ static void ume_show_scrollbar(GtkWidget *widget, void *data) {
 
 	if (!g_key_file_get_boolean(ume.cfg_file, cfg_group, "scrollbar", NULL)) {
 		ume.config.show_scrollbar = true;
-		ume_set_config(cfg_group, "scrollbar", TRUE);
+		ume_set_config(cfg_group, "scrollbar", true);
 	} else {
 		ume.config.show_scrollbar = false;
-		ume_set_config(cfg_group, "scrollbar", FALSE);
+		ume_set_config(cfg_group, "scrollbar", false);
 	}
 
 	/* Toggle/Untoggle the scrollbar for all tabs */
@@ -1457,10 +1466,10 @@ static void ume_audible_bell(GtkWidget *widget, void *data) {
 	term = ume_get_page_term(ume, page);
 
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
-		vte_terminal_set_audible_bell(VTE_TERMINAL(term->vte), TRUE);
+		vte_terminal_set_audible_bell(VTE_TERMINAL(term->vte), true);
 		ume_set_config(cfg_group, "audible_bell", "Yes");
 	} else {
-		vte_terminal_set_audible_bell(VTE_TERMINAL(term->vte), FALSE);
+		vte_terminal_set_audible_bell(VTE_TERMINAL(term->vte), false);
 		ume_set_config(cfg_group, "audible_bell", "No");
 	}
 }
@@ -1486,10 +1495,10 @@ static void ume_allow_bold(GtkWidget *widget, void *data) {
 	struct terminal *term = ume_get_page_term(ume, page);
 
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
-		vte_terminal_set_allow_bold(VTE_TERMINAL(term->vte), TRUE);
+		vte_terminal_set_allow_bold(VTE_TERMINAL(term->vte), true);
 		ume_set_config(cfg_group, "allow_bold", "Yes");
 	} else {
-		vte_terminal_set_allow_bold(VTE_TERMINAL(term->vte), FALSE);
+		vte_terminal_set_allow_bold(VTE_TERMINAL(term->vte), false);
 		ume_set_config(cfg_group, "allow_bold", "No");
 	}
 }
@@ -1546,7 +1555,7 @@ static char *ume_get_term_cwd(struct terminal *term) {
 			return cwd;
 		}
 
-		buf = malloc(sb.st_size + 1);
+		buf = (char *)malloc(sb.st_size + 1);
 
 		if (buf == NULL) {
 			g_free(file);
@@ -1568,21 +1577,21 @@ static char *ume_get_term_cwd(struct terminal *term) {
 }
 
 static gboolean ume_resized_window(GtkWidget *widget, GdkEventConfigure *event, void *data) {
-	if (event->width != ume.width || event->height != ume.height) { // NOTE: configure events are?
+	if ((guint)event->width != ume.width || (guint)event->height != ume.height) { // NOTE: configure events are?
 		// SAY("Configure event received. Current w %d h %d ConfigureEvent w %d h %d",
 		// ume.width, ume.height, event->width, event->height);
-		ume.resized = TRUE;
+		ume.resized = true;
 	}
-	return FALSE;
+	return false;
 }
 
 static void ume_setname_entry_changed(GtkWidget *widget, void *data) {
 	GtkDialog *title_dialog = (GtkDialog *)data;
 
 	if (strcmp(gtk_entry_get_text(GTK_ENTRY(widget)), "") == 0) {
-		gtk_dialog_set_response_sensitive(GTK_DIALOG(title_dialog), GTK_RESPONSE_ACCEPT, FALSE);
+		gtk_dialog_set_response_sensitive(GTK_DIALOG(title_dialog), GTK_RESPONSE_ACCEPT, false);
 	} else {
-		gtk_dialog_set_response_sensitive(GTK_DIALOG(title_dialog), GTK_RESPONSE_ACCEPT, TRUE);
+		gtk_dialog_set_response_sensitive(GTK_DIALOG(title_dialog), GTK_RESPONSE_ACCEPT, true);
 	}
 }
 
@@ -1618,7 +1627,6 @@ static void ume_close_tab(GtkWidget *widget, void *data) {
 
 	/* Check if there are running processes for this tab. Use tcgetpgrp to compare to the shell PGID */
 	pid_t pgid = tcgetpgrp(vte_pty_get_fd(vte_terminal_get_pty(VTE_TERMINAL(term->vte))));
-
 	if ((pgid != -1) && (pgid != term->pid) && (!ume.config.less_questions)) {
 		GtkWidget *dialog =
 				gtk_message_dialog_new(GTK_WINDOW(ume.main_window), GTK_DIALOG_MODAL, GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO,
@@ -1627,10 +1635,12 @@ static void ume_close_tab(GtkWidget *widget, void *data) {
 		gint response = gtk_dialog_run(GTK_DIALOG(dialog));
 		gtk_widget_destroy(dialog);
 
-		if (response == GTK_RESPONSE_YES)
+		if (response == GTK_RESPONSE_YES) {
 			ume_del_tab(page);
-	} else
+		}
+	} else {
 		ume_del_tab(page);
+	}
 
 	npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
 	if (npages == 0)
@@ -1638,12 +1648,12 @@ static void ume_close_tab(GtkWidget *widget, void *data) {
 }
 
 static void ume_fullscreen(GtkWidget *widget, void *data) {
-	if (ume.fullscreen != TRUE) {
-		ume.fullscreen = TRUE;
+	if (ume.fullscreen != true) {
+		ume.fullscreen = true;
 		gtk_window_fullscreen(GTK_WINDOW(ume.main_window));
 	} else {
 		gtk_window_unfullscreen(GTK_WINDOW(ume.main_window));
-		ume.fullscreen = FALSE;
+		ume.fullscreen = false;
 	}
 }
 
@@ -1705,20 +1715,20 @@ static void ume_conf_changed(GtkWidget *widget, void *data) {
 static void ume_disable_numbered_tabswitch(GtkWidget *widget, void *data) {
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
 		ume.config.disable_numbered_tabswitch = true;
-		ume_set_config(cfg_group, "disable_numbered_tabswitch", TRUE);
+		ume_set_config(cfg_group, "disable_numbered_tabswitch", true);
 	} else {
 		ume.config.disable_numbered_tabswitch = false;
-		ume_set_config(cfg_group, "disable_numbered_tabswitch", FALSE);
+		ume_set_config(cfg_group, "disable_numbered_tabswitch", false);
 	}
 }
 
 static void ume_use_fading(GtkWidget *widget, void *data) {
 	if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
 		ume.config.use_fading = true;
-		ume_set_config(cfg_group, "use_fading", TRUE);
+		ume_set_config(cfg_group, "use_fading", true);
 	} else {
 		ume.config.use_fading = false;
-		ume_set_config(cfg_group, "use_fading", FALSE);
+		ume_set_config(cfg_group, "use_fading", false);
 		ume_fade_in();
 		ume_set_colors();
 	}
@@ -1774,7 +1784,7 @@ static void ume_reload_config_file(bool readonly) {
 	GError *error = NULL;
 	/* Open config file */
 	// TODO debug further regarding mass edits and config file getting cleared!
-	if (!g_key_file_load_from_file(ume.cfg_file, ume.configfile, 0, &error)) {
+	if (!g_key_file_load_from_file(ume.cfg_file, ume.configfile, G_KEY_FILE_NONE, &error)) {
 		/* If there's no file, ignore the error. A new one is created */
 		if (error->code == G_KEY_FILE_ERROR_UNKNOWN_ENCODING || error->code == G_KEY_FILE_ERROR_INVALID_VALUE) {
 			fprintf(stderr, "Not valid config file format: %s, (%s)\n", error->message, ume.configfile);
@@ -1918,7 +1928,7 @@ static void ume_init() { // TODO break this glorious mega function .
 	ume_reload_config_file(false);
 
 	/* Use always GTK header bar*/
-	g_object_set(gtk_settings_get_default(), "gtk-dialogs-use-header", TRUE, NULL);
+	g_object_set(gtk_settings_get_default(), "gtk-dialogs-use-header", true, NULL);
 	ume.provider = gtk_css_provider_new();
 
 	ume.main_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -2048,7 +2058,7 @@ static void ume_init_popup() {
 			*item_other_options, *item_cursor, *item_cursor_block, *item_cursor_underline, *item_cursor_ibeam,
 			*item_show_close_button, *item_tabs_on_bottom, *item_less_questions, *item_disable_numbered_tabswitch,
 			*item_use_fading, *item_stop_tab_cycling_at_end_tabs;
-	GtkWidget *options_menu, *other_options_menu, *cursor_menu, *palette_menu;
+	GtkWidget *options_menu, *other_options_menu, *cursor_menu;
 
 	ume.item_open_mail = gtk_menu_item_new_with_label(_("Open mail"));
 	ume.item_open_link = gtk_menu_item_new_with_label(_("Open link"));
@@ -2087,76 +2097,76 @@ static void ume_init_popup() {
 
 	/* Show defaults in menu items */
 	if (ume.config.first_tab) {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_show_first_tab), TRUE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_show_first_tab), true);
 	} else {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_show_first_tab), FALSE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_show_first_tab), false);
 	}
 
 	if (ume.config.show_closebutton) {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_show_close_button), TRUE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_show_close_button), true);
 	} else {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_show_close_button), FALSE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_show_close_button), false);
 	}
 
 	if (ume.config.tabs_on_bottom) {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_tabs_on_bottom), TRUE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_tabs_on_bottom), true);
 	} else {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_tabs_on_bottom), FALSE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_tabs_on_bottom), false);
 	}
 
 	if (ume.config.less_questions) {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_less_questions), TRUE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_less_questions), true);
 	} else {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_less_questions), FALSE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_less_questions), false);
 	}
 
 	if (ume.config.show_scrollbar) {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_toggle_scrollbar), TRUE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_toggle_scrollbar), true);
 	} else {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_toggle_scrollbar), FALSE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_toggle_scrollbar), false);
 	}
 
 	if (ume.config.disable_numbered_tabswitch) {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_disable_numbered_tabswitch), TRUE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_disable_numbered_tabswitch), true);
 	} else {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_disable_numbered_tabswitch), FALSE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_disable_numbered_tabswitch), false);
 	}
 
 	if (ume.config.use_fading) {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_use_fading), TRUE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_use_fading), true);
 	} else {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_use_fading), FALSE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_use_fading), false);
 	}
 
 	if (ume.config.urgent_bell) {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_urgent_bell), TRUE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_urgent_bell), true);
 	}
 
 	if (ume.config.audible_bell) {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_audible_bell), TRUE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_audible_bell), true);
 	}
 
 	if (ume.config.blinking_cursor) {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_blinking_cursor), TRUE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_blinking_cursor), true);
 	}
 
 	if (ume.config.allow_bold) {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_allow_bold), TRUE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_allow_bold), true);
 	}
 
 	if (ume.config.stop_tab_cycling_at_end_tabs) {
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_stop_tab_cycling_at_end_tabs), TRUE);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_stop_tab_cycling_at_end_tabs), true);
 	}
 
 	switch (ume.config.cursor_type) {
 		case VTE_CURSOR_SHAPE_BLOCK:
-			gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_cursor_block), TRUE);
+			gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_cursor_block), true);
 			break;
 		case VTE_CURSOR_SHAPE_UNDERLINE:
-			gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_cursor_underline), TRUE);
+			gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_cursor_underline), true);
 			break;
 		case VTE_CURSOR_SHAPE_IBEAM:
-			gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_cursor_ibeam), TRUE);
+			gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item_cursor_ibeam), true);
 	}
 
 	ume.open_link_separator = gtk_separator_menu_item_new();
@@ -2183,7 +2193,6 @@ static void ume_init_popup() {
 	options_menu = gtk_menu_new();
 	other_options_menu = gtk_menu_new();
 	cursor_menu = gtk_menu_new();
-	palette_menu = gtk_menu_new();
 
 	gtk_menu_shell_append(GTK_MENU_SHELL(options_menu), item_set_title);
 	gtk_menu_shell_append(GTK_MENU_SHELL(options_menu), item_select_colors);
@@ -2236,9 +2245,10 @@ static void ume_init_popup() {
 									 NULL);
 	g_signal_connect(G_OBJECT(item_use_fading), "activate", G_CALLBACK(ume_use_fading), NULL);
 	g_signal_connect(G_OBJECT(item_set_title), "activate", G_CALLBACK(ume_set_title_dialog), NULL);
-	g_signal_connect(G_OBJECT(item_cursor_block), "activate", G_CALLBACK(ume_set_cursor), "block");
-	g_signal_connect(G_OBJECT(item_cursor_underline), "activate", G_CALLBACK(ume_set_cursor), "underline");
-	g_signal_connect(G_OBJECT(item_cursor_ibeam), "activate", G_CALLBACK(ume_set_cursor), "ibeam");
+
+	g_signal_connect(G_OBJECT(item_cursor_block), "activate", G_CALLBACK(ume_set_cursor), (void *)"block");
+	g_signal_connect(G_OBJECT(item_cursor_underline), "activate", G_CALLBACK(ume_set_cursor), (void *)"underline");
+	g_signal_connect(G_OBJECT(item_cursor_ibeam), "activate", G_CALLBACK(ume_set_cursor), (void *)"ibeam");
 
 	g_signal_connect(G_OBJECT(ume.item_open_mail), "activate", G_CALLBACK(ume_open_mail), NULL);
 	g_signal_connect(G_OBJECT(ume.item_open_link), "activate", G_CALLBACK(ume_open_url), NULL);
@@ -2281,7 +2291,7 @@ static void ume_set_size(void) {
 		ume.columns = vte_terminal_get_column_count(VTE_TERMINAL(term->vte));
 		ume.rows = vte_terminal_get_row_count(VTE_TERMINAL(term->vte));
 		SAY("New columns %ld and rows %ld", ume.columns, ume.rows);
-		ume.resized = FALSE;
+		ume.resized = false;
 	}
 
 	gtk_style_context_get_padding(gtk_widget_get_style_context(term->vte), gtk_widget_get_state_flags(term->vte),
@@ -2441,9 +2451,9 @@ static void ume_add_tab() {
 	term->label = gtk_label_new(term->label_text);
 
 	tab_label_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
-	gtk_widget_set_hexpand(tab_label_hbox, TRUE);
+	gtk_widget_set_hexpand(tab_label_hbox, true);
 	gtk_label_set_ellipsize(GTK_LABEL(term->label), PANGO_ELLIPSIZE_END);
-	gtk_box_pack_start(GTK_BOX(tab_label_hbox), term->label, TRUE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(tab_label_hbox), term->label, true, false, 0);
 
 	/* If the tab close button is enabled, create and add it to the tab */
 	if (ume.config.show_closebutton) {
@@ -2457,7 +2467,7 @@ static void ume_add_tab() {
 
 		GtkWidget *image = gtk_image_new_from_icon_name("window-close", GTK_ICON_SIZE_MENU);
 		gtk_container_add(GTK_CONTAINER(close_button), image);
-		gtk_box_pack_start(GTK_BOX(tab_label_hbox), close_button, FALSE, FALSE, 0);
+		gtk_box_pack_start(GTK_BOX(tab_label_hbox), close_button, false, false, 0);
 	}
 
 	if (ume.config.tabs_on_bottom) {
@@ -2478,8 +2488,8 @@ static void ume_add_tab() {
 	term->scrollbar =
 			gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(term->vte)));
 	term->hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-	gtk_box_pack_start(GTK_BOX(term->hbox), term->vte, TRUE, TRUE, 0);
-	gtk_box_pack_start(GTK_BOX(term->hbox), term->scrollbar, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(term->hbox), term->vte, true, true, 0);
+	gtk_box_pack_start(GTK_BOX(term->hbox), term->scrollbar, false, false, 0);
 
 	term->colorset = ume.config.last_colorset - 1;
 
@@ -2503,9 +2513,9 @@ static void ume_add_tab() {
 		exit(1);
 	}
 
-	gtk_notebook_set_tab_reorderable(GTK_NOTEBOOK(ume.notebook), term->hbox, TRUE);
+	gtk_notebook_set_tab_reorderable(GTK_NOTEBOOK(ume.notebook), term->hbox, true);
 	// TODO: Set group id to support detached tabs
-	// gtk_notebook_set_tab_detachable(GTK_NOTEBOOK(ume.notebook), term->hbox, TRUE);
+	// gtk_notebook_set_tab_detachable(GTK_NOTEBOOK(ume.notebook), term->hbox, true);
 
 	ume_set_page_term(ume, index, term);
 
@@ -2525,17 +2535,18 @@ static void ume_add_tab() {
 	}
 
 	/* Since vte-2.91 env is properly overwritten */
-	char *command_env[2] = {"TERM=xterm-256color", 0};
+	const char *mode = "TERM=xterm-256color";
+	char *command_env[2] = {g_strdup(mode), 0};
 	/* First tab */
 	npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
 	if (npages == 1) {
 		if (ume.config.first_tab) {
-			gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), TRUE);
+			gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), true);
 		} else {
-			gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), FALSE);
+			gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), false);
 		}
 
-		gtk_notebook_set_show_border(GTK_NOTEBOOK(ume.notebook), FALSE);
+		gtk_notebook_set_show_border(GTK_NOTEBOOK(ume.notebook), false);
 		ume_set_font();
 		ume_set_colors();
 		/* Set size before showing the widgets but after setting the font */
@@ -2557,7 +2568,7 @@ static void ume_add_tab() {
 			if (gwin != NULL) {
 				guint winid = gdk_x11_window_get_xid(gwin);
 				gchar *winidstr = g_strdup_printf("%d", winid);
-				g_setenv("WINDOWID", winidstr, FALSE);
+				g_setenv("WINDOWID", winidstr, false);
 				g_free(winidstr);
 			}
 		}
@@ -2626,14 +2637,15 @@ static void ume_add_tab() {
 				free(path);
 				g_strfreev(command_argv);
 				g_strfreev(option_xterm_args);
+				g_free(command_env[0]);
 			}
 		} // else { /* No execute option */
 
 		/* Only fork if there is no execute option or if it has failed */
 		if ((!option_execute && !option_xterm_args) || (command_argc == 0)) {
-			if (option_hold == TRUE) {
+			if (option_hold == true) {
 				ume_error("Hold option given without any command");
-				option_hold = FALSE;
+				option_hold = false;
 			}
 			vte_terminal_spawn_async(VTE_TERMINAL(term->vte), VTE_PTY_NO_HELPER, cwd, ume.argv, command_env,
 															 (GSpawnFlags)(G_SPAWN_SEARCH_PATH | G_SPAWN_FILE_AND_ARGV_ZERO), NULL, NULL, NULL, -1,
@@ -2649,7 +2661,7 @@ static void ume_add_tab() {
 		}
 
 		if (npages == 2) {
-			gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), TRUE);
+			gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), true);
 			ume_set_size();
 		}
 		/* Call set_current page after showing the widget: gtk ignores this
@@ -2667,13 +2679,13 @@ static void ume_add_tab() {
 	vte_terminal_set_scrollback_lines(VTE_TERMINAL(term->vte), ume.config.scroll_lines);
 	vte_terminal_match_add_regex(VTE_TERMINAL(term->vte), ume.config.http_vteregexp, PCRE2_CASELESS);
 	vte_terminal_match_add_regex(VTE_TERMINAL(term->vte), ume.config.mail_vteregexp, PCRE2_CASELESS);
-	vte_terminal_set_mouse_autohide(VTE_TERMINAL(term->vte), TRUE);
+	vte_terminal_set_mouse_autohide(VTE_TERMINAL(term->vte), true);
 	vte_terminal_set_backspace_binding(VTE_TERMINAL(term->vte), VTE_ERASE_ASCII_DELETE);
 	vte_terminal_set_word_char_exceptions(VTE_TERMINAL(term->vte), ume.config.word_chars);
-	vte_terminal_set_audible_bell(VTE_TERMINAL(term->vte), ume.config.audible_bell ? TRUE : FALSE);
+	vte_terminal_set_audible_bell(VTE_TERMINAL(term->vte), ume.config.audible_bell ? true : false);
 	vte_terminal_set_cursor_blink_mode(VTE_TERMINAL(term->vte),
 																		 ume.config.blinking_cursor ? VTE_CURSOR_BLINK_ON : VTE_CURSOR_BLINK_OFF);
-	vte_terminal_set_allow_bold(VTE_TERMINAL(term->vte), ume.config.allow_bold ? TRUE : FALSE);
+	vte_terminal_set_allow_bold(VTE_TERMINAL(term->vte), ume.config.allow_bold ? true : false);
 	vte_terminal_set_cursor_shape(VTE_TERMINAL(term->vte), ume.config.cursor_type);
 
 	// ume_set_colors();
@@ -2707,9 +2719,9 @@ static void ume_del_tab(gint page) {
 	 * sizes are calculated when the tab is deleted */
 	if (npages == 2) {
 		if (ume.config.first_tab) {
-			gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), TRUE);
+			gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), true);
 		} else {
-			gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), FALSE);
+			gtk_notebook_set_show_tabs(GTK_NOTEBOOK(ume.notebook), false);
 		}
 		ume.config.keep_fc = true;
 	}
@@ -2729,7 +2741,7 @@ static void ume_set_keybind(const gchar *key, guint value) {
 	char *valname;
 	valname = gdk_keyval_name(value);
 	g_key_file_set_string(ume.cfg_file, cfg_group, key, valname);
-	ume.config_modified = TRUE;
+	ume.config_modified = true;
 	// FIXME: free() valname?
 }
 
@@ -2761,10 +2773,9 @@ static guint ume_load_keybind_or(const gchar *group, const gchar *key, guint def
 static void ume_error(const char *format, ...) {
 	GtkWidget *dialog;
 	va_list args;
-	char *buff;
 
 	va_start(args, format);
-	buff = malloc(sizeof(char) * ERROR_BUFFER_LENGTH);
+	char *buff = (char *)malloc(sizeof(char) * ERROR_BUFFER_LENGTH);
 	vsnprintf(buff, sizeof(char) * ERROR_BUFFER_LENGTH, format, args);
 	va_end(args);
 
@@ -2804,22 +2815,22 @@ int main(int argc, char **argv) {
 	 * sure GOption doesn't grab any arguments meant for the command being called */
 
 	/* Initialize nargv */
-	const char **nargv = (const char **)calloc((argc + 1), sizeof(char *));
+	char **nargv = (char **)calloc((argc + 1), sizeof(char *));
 	int n = 0;
 	int nargc = argc;
-	gboolean have_e = FALSE;
+	bool have_e = false;
 
-	for (int i = 0; i < argc; i++) {
+	for (int i = 0; i < argc; ++i) {
 		if (!have_e && g_strcmp0(argv[i], "-e") == 0) {
-			nargv[n] = "-e";
-			n++;
-			nargv[n] = "--";
-			nargc++;
-			have_e = TRUE;
+			nargv[n] = g_strdup("-e");
+			++n;
+			nargv[n] = g_strdup("--");
+			++nargc;
+			have_e = true;
 		} else {
 			nargv[n] = g_strdup(argv[i]);
 		}
-		n++;
+		++n;
 	}
 
 	/* Options parsing */
@@ -2828,7 +2839,7 @@ int main(int argc, char **argv) {
 	GOptionGroup *option_group;
 
 	context = g_option_context_new(_("- vte-based terminal emulator"));
-	option_group = gtk_get_option_group(TRUE);
+	option_group = gtk_get_option_group(true);
 	g_option_context_add_main_entries(context, entries, GETTEXT_PACKAGE);
 	g_option_group_set_translation_domain(option_group, GETTEXT_PACKAGE);
 	g_option_context_add_group(context, option_group);
