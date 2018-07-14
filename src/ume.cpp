@@ -241,6 +241,7 @@ static void ume_conf_changed(GtkWidget *, void *);
 static void ume_window_show_event(GtkWidget *, gpointer);
 // static gboolean ume_notebook_focus_in (GtkWidget *, void *);
 static gboolean ume_notebook_scroll(GtkWidget *, GdkEventScroll *);
+static bool ume_close_tab(gint tab);
 
 /* Menuitem callbacks */
 static void ume_font_dialog(GtkWidget *, void *);
@@ -249,7 +250,7 @@ static void ume_color_dialog(GtkWidget *, void *);
 static void ume_set_title_dialog(GtkWidget *, void *);
 static void ume_search_dialog(GtkWidget *, void *);
 static void ume_new_tab(GtkWidget *, void *);
-static void ume_close_tab(GtkWidget *, void *);
+static void ume_close_tab_callback(GtkWidget *, void *);
 static void ume_fullscreen(GtkWidget *, void *);
 static void ume_open_url(GtkWidget *, void *);
 static void ume_copy(GtkWidget *, void *);
@@ -378,7 +379,6 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	/* Use keycodes instead of keyvals. With keyvals, key bindings work only in US/ISO8859-1 and similar locales */
 	guint keycode = event->hardware_keycode;
 
-	/* Add/delete tab keybinding pressed */
 	if ((event->state & ume.config.add_tab_accelerator) == ume.config.add_tab_accelerator &&
 			keycode == ume_tokeycode(ume.config.add_tab_key)) {
 		ume_add_tab();
@@ -386,7 +386,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	} else if ((event->state & ume.config.del_tab_accelerator) == ume.config.del_tab_accelerator &&
 						 keycode == ume_tokeycode(ume.config.del_tab_key)) {
 		/* Delete current tab */
-		ume_close_tab(NULL, NULL);
+		ume_close_tab_callback(NULL, NULL);
 		return true;
 	}
 
@@ -397,7 +397,6 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 		 move never works, because switch will be processed first, so it needs to be fixed with the following condition */
 	if (((event->state & ume.config.switch_tab_accelerator) == ume.config.switch_tab_accelerator) &&
 			((event->state & ume.config.move_tab_accelerator) != ume.config.move_tab_accelerator)) {
-
 		if ((keycode >= ume_tokeycode(GDK_KEY_1)) && (keycode <= ume_tokeycode(GDK_KEY_9))) {
 
 			/* User has explicitly disabled this branch, make sure to propagate the event */
@@ -442,12 +441,13 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 		}
 	}
 
-	/* Move tab keybinding pressed */
-	if (((event->state & ume.config.move_tab_accelerator) == ume.config.move_tab_accelerator)) {
-		if (keycode == ume_tokeycode(ume.config.prev_tab_key)) {
+	if ((event->state & ume.config.move_tab_accelerator) == ume.config.move_tab_accelerator) {
+		/* Move tab keybinding pressed */
+		if (ume_tokeycode(ume.config.prev_tab_key) == keycode) {
 			ume_move_tab(BACKWARDS);
 			return true;
-		} else if (keycode == ume_tokeycode(ume.config.next_tab_key)) {
+		}
+		if (ume_tokeycode(ume.config.next_tab_key) == keycode) {
 			ume_move_tab(FORWARD);
 			return true;
 		}
@@ -566,7 +566,6 @@ static gboolean ume_button_press(GtkWidget *widget, GdkEventButton *button_event
 			ume.current_match) {
 
 		ume_open_url(NULL, NULL);
-
 		return true;
 	}
 
@@ -880,6 +879,14 @@ static void ume_config_done() {
 }
 
 static gboolean ume_delete_event(GtkWidget *widget, void *data) {
+	if (!ume.config.less_questions) {
+		while (gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook)) > 0) {
+			if (!ume_close_tab(0)) {
+				return true;
+			}
+		}
+	}
+
 	ume_config_done();
 	return false;
 }
@@ -1615,16 +1622,9 @@ static void ume_new_tab(GtkWidget *widget, void *data) {
 	ume_add_tab();
 }
 
-static void ume_close_tab(GtkWidget *widget, void *data) {
-	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
-	gint npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
+static bool ume_close_tab(gint page) {
 	struct terminal *term = ume_get_page_term(ume, page);
-
-	/* Only write configuration to disk if it's the last tab */
-	if (npages == 1) {
-		ume_config_done();
-	}
-
+	SAY("Destroying tab %d\n", page);
 	/* Check if there are running processes for this tab. Use tcgetpgrp to compare to the shell PGID */
 	pid_t pgid = tcgetpgrp(vte_pty_get_fd(vte_terminal_get_pty(VTE_TERMINAL(term->vte))));
 	if ((pgid != -1) && (pgid != term->pid) && (!ume.config.less_questions)) {
@@ -1637,10 +1637,26 @@ static void ume_close_tab(GtkWidget *widget, void *data) {
 
 		if (response == GTK_RESPONSE_YES) {
 			ume_del_tab(page);
+			return true;
 		}
 	} else {
 		ume_del_tab(page);
+		return true;
 	}
+
+	SAY("Failed to destroy tab %d\n", page);
+	return false;
+}
+
+static void ume_close_tab_callback(GtkWidget *, void *) {
+	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
+	gint npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
+	/* Only write configuration to disk if it's the last tab */
+	if (npages == 1) {
+		ume_config_done();
+	}
+
+	ume_close_tab(page);
 
 	npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
 	if (npages == 0)
@@ -1677,7 +1693,6 @@ static void ume_closebutton_clicked(GtkWidget *widget, void *data) {
 
 	/* Check if there are running processes for this tab. Use tcgetpgrp to compare to the shell PGID */
 	pgid = tcgetpgrp(vte_pty_get_fd(vte_terminal_get_pty(VTE_TERMINAL(term->vte))));
-
 	if ((pgid != -1) && (pgid != term->pid) && (!ume.config.less_questions)) {
 		dialog =
 				gtk_message_dialog_new(GTK_WINDOW(ume.main_window), GTK_DIALOG_MODAL, GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO,
@@ -1865,6 +1880,8 @@ static void ume_reload_config_file(bool readonly) {
 
 	// ----- Begin of keybinds -----
 	// TODO make a keybind struct with accelerator and key bundled together.
+	// ume.config.add_tab_accelerator = ume_load_config_or(cfg_group, "add_tab_accelerator",
+	// DEFAULT_ADD_TAB_ACCELERATOR);
 	ume.config.add_tab_accelerator = ume_load_config_or(cfg_group, "add_tab_accelerator", DEFAULT_ADD_TAB_ACCELERATOR);
 	ume.config.add_tab_key = ume_load_keybind_or(cfg_group, "add_tab_key", DEFAULT_ADD_TAB_KEY);
 
@@ -2224,7 +2241,7 @@ static void ume_init_popup() {
 	/* ... and finally assign callbacks to menuitems */
 	g_signal_connect(G_OBJECT(item_new_tab), "activate", G_CALLBACK(ume_new_tab), NULL);
 	g_signal_connect(G_OBJECT(item_set_name), "activate", G_CALLBACK(ume_set_name_dialog), NULL);
-	g_signal_connect(G_OBJECT(item_close_tab), "activate", G_CALLBACK(ume_close_tab), NULL);
+	g_signal_connect(G_OBJECT(item_close_tab), "activate", G_CALLBACK(ume_close_tab_callback), NULL);
 	g_signal_connect(G_OBJECT(item_select_font), "activate", G_CALLBACK(ume_font_dialog), NULL);
 	g_signal_connect(G_OBJECT(item_copy), "activate", G_CALLBACK(ume_copy), NULL);
 	g_signal_connect(G_OBJECT(item_paste), "activate", G_CALLBACK(ume_paste), NULL);
@@ -2259,10 +2276,8 @@ static void ume_init_popup() {
 }
 
 static void ume_destroy() {
-	SAY("Destroying ume");
-
 	/* Delete all existing tabs */
-	while (gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook)) >= 1) {
+	while (gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook)) > 0) {
 		ume_del_tab(-1);
 	}
 
@@ -2706,7 +2721,6 @@ static void ume_del_tab(gint page) {
 	/* When there's only one tab use the shell title, if provided */
 	if (npages == 2) {
 		const char *title;
-
 		term = ume_get_page_term(ume, 0);
 		title = vte_terminal_get_window_title(VTE_TERMINAL(term->vte));
 		if (title != NULL)

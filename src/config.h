@@ -2,6 +2,7 @@
 #include <gdk/gdk.h>
 
 #include <algorithm>
+#include <assert.h>
 #include <string>
 
 #include "defaults.h"
@@ -43,14 +44,37 @@ struct term_colors_t {
  */
 
 using accel_t = guint;
-using key_t = gint;
+using keycode_t = guint;
 
 struct keybind_t {
-	key_t key = GDK_KEY_VoidSymbol;
+	keycode_t key = GDK_KEY_VoidSymbol;
 	accel_t accelerator = 0;
 };
 
+static guint tokeycode(guint key) {
+	GdkKeymap *keymap;
+	GdkKeymapKey *keys;
+	gint n_keys;
+	guint res = 0;
+	keymap = gdk_keymap_get_for_display(gdk_display_get_default());
+
+	if (gdk_keymap_get_entries_for_keyval(keymap, key, &keys, &n_keys)) {
+		if (n_keys > 0) {
+			res = keys[0].keycode;
+		}
+		g_free(keys);
+	}
+	return res;
+}
+
+//& keybind.accelerator
+static inline bool keybind_pressed(const keybind_t &keybind, const keybind_t &pressedKey) {
+	return (pressedKey.accelerator & keybind.accelerator) == keybind.accelerator &&
+				 tokeycode(keybind.key) == pressedKey.key;
+}
+
 struct keybind_t parse_keybind(const char *cstr) {
+	assert(cstr != nullptr);
 	const std::string sep = "+";
 	keybind_t bind;
 
@@ -148,10 +172,12 @@ struct config_t {
 	accel_t open_url_accelerator;
 
 	accel_t add_tab_accelerator;
-	gint add_tab_key;
-
+	keycode_t add_tab_key;
 	accel_t del_tab_accelerator;
-	gint del_tab_key;
+	keycode_t del_tab_key;
+
+	// keybind_t add_tab_key;
+	// keybind_t del_tab_key;
 
 	accel_t switch_tab_accelerator;
 	accel_t move_tab_accelerator;
