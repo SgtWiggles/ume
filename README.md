@@ -60,10 +60,10 @@ Key bindings can be unbound by erasing the field and leaving it blank.
 |`show_always_first_tab`|`No`| Should ume always show the first tab |
 |`scrollbar`|`0`| Should the terminal show the scroll bar |
 |`closebutton`|`true`| Should ume show the close button |
-|`tabs_on_bottom`|`0`| Show tabs on the bottom of the screen |
-|`less_questions`|`0`| Show less pop ups |
-|`disable_numbered_tabswitch`|`0`| Allows you to switch to tabs by pressing numbers |
-|`use_fading`|`0`| Fade between colorset swaps |
+|`tabs_on_bottom`|`false`| Show tabs on the bottom of the screen |
+|`less_questions`|`false`| Show less pop ups |
+|`disable_numbered_tabswitch`|`false`| Allows you to switch to tabs by pressing numbers |
+|`use_fading`|`false`| Fade text out when terminal is not focused |
 |`scrollable_tabs`|`true`| Use the scrollwheel to scroll over tabs |
 |`urgent_bell`|`Yes`| Enable urgent bell when something pops up in the terminal |
 |`audible_bell`|`Yes`| Should the bell make a sound |
@@ -106,8 +106,8 @@ Key bindings can be unbound by erasing the field and leaving it blank.
 |`colors6_key`|`F6`| Key to switch to the 6th colorset, uses `set_colorset_accelerator` |
 |`set_colorset_accelerator`|`5`| Accelerator for changing to a colorset |
 |`icon_file`|`terminal-tango.svg`| Path to icon file |
-|`reload_config_on_modify`|`false`| If the config file gets modified while running, reload. Warning sometimes when very rapidly overwriting the file, ume fails to read it and the config gets replaced with the default config. Make sure to have a back up of the config file when using this setting. |
-|`ignore_overwrite`|`false`| Ignore the overwrite prompt when closing ume |
+|`reload_config_on_modify`|`false`| If the config file gets modified while running, reload. Warning sometimes when overwriting the file, ume fails to read it and the config gets replaced with the default config. Make sure to have a back up of the config file when using this setting. |
+|`ignore_overwrite`|`false`| Ignore the overwrite prompt when closing ume. Does not overwrite the existing config file |
 
 (UNDER CONSTRUCTION)
 ### Contact
@@ -115,15 +115,18 @@ Key bindings can be unbound by erasing the field and leaving it blank.
 
 ### TODO
 - [ ] Clean up code base  
-- [ ] Remove wall of warnings when building  
-- [ ] Better way to configure modifier keys   
-- [ ] Change booleans in config file to true false values  
+- [ ] Better way to configure modifier keys (replace accelerator numbers with strings)  
 - [ ] Change yes/no in config file to true false values  
 - [ ] Update [INSTALL](INSTALL)  
 - [ ] Reload settings keybind
-- [ ] Fix the automated reloading system to prevent overwrites.
+- [ ] Replace automated reloading with signals
+
+- [x] Change booleans in config file to true false values  
+- [x] Remove wall of warnings when building 
 - [x] Add shell colors to color menu  
 - [x] Programmatically manipulate ume while it is running  
+
+- [ ] ~~Fix the automated reloading system to prevent overwrites.~~
 
 ## License
 
