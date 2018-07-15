@@ -49,7 +49,7 @@ Also requires a C++17 compliant compiler. So far ume has been compiled with gcc 
 Accelerators can be set to any mask value from the GdkModifierType in gdktypes.h. For reference look at: https://github.com/GNOME/gtk/blob/master/gdk/gdktypes.h
 
 ###### Configuration Settings
-Key bindings can be unbound by erasing the field and leaving it blank.
+Key bindings can be unbound by erasing the value and leaving it blank.
 
 | Config Key | Default | Description |
 | --- | --- | --- |
@@ -106,10 +106,13 @@ Key bindings can be unbound by erasing the field and leaving it blank.
 |`colors6_key`|`F6`| Key to switch to the 6th colorset, uses `set_colorset_accelerator` |
 |`set_colorset_accelerator`|`5`| Accelerator for changing to a colorset |
 |`icon_file`|`terminal-tango.svg`| Path to icon file |
-|`reload_config_on_modify`|`false`| If the config file gets modified while running, reload. Warning sometimes when overwriting the file, ume fails to read it and the config gets replaced with the default config. Make sure to have a back up of the config file when using this setting. |
 |`ignore_overwrite`|`false`| Ignore the overwrite prompt when closing ume. Does not overwrite the existing config file |
+|`reload_accelerator`|`5`| Accelerator to for the reload keybind |
+|`reload_key`|`R`| Key to reload config file | 
 
-(UNDER CONSTRUCTION)
+###### Signals
+When ume receives the signal USR1 it reloads the config file. Thus one can reload all the config for all instances of ume using `killall -USR1 ume`.
+
 ### Contact
   For submitting bugs or requesting new features, please use the [issue tracker](https://github.com/SgtWiggles/ume/issues). Before submitting make sure you are using the latest version of ume. If you are submitting a bug report be sure to include your operating system, a minimal way to reproduce the bug and anything else that may be relevent to the bug.
 
@@ -119,13 +122,11 @@ Key bindings can be unbound by erasing the field and leaving it blank.
 - [ ] Change yes/no in config file to true false values  
 - [ ] Update [INSTALL](INSTALL)  
 - [ ] Reload settings keybind
-- [ ] Replace automated reloading with signals
-
+- [x] Replace automated reloading with signals
 - [x] Change booleans in config file to true false values  
 - [x] Remove wall of warnings when building 
 - [x] Add shell colors to color menu  
 - [x] Programmatically manipulate ume while it is running  
-
 - [ ] ~~Fix the automated reloading system to prevent overwrites.~~
 
 ## License
