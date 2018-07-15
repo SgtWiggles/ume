@@ -27,6 +27,7 @@
 #include <locale.h>
 #include <math.h>
 #include <pango/pango.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -50,21 +51,21 @@
 #define N_(String) (String)
 #define GETTEXT_PACKAGE "ume"
 
-// TODO template and compile time inline?
-#define SAY(format, ...)                                                                                               \
-	do {                                                                                                                 \
-		if (strcmp("Debug", BUILDTYPE) == 0) {                                                                             \
-			fprintf(stderr, "[%d] ", getpid());                                                                              \
-			fprintf(stderr, "[%s] ", __FUNCTION__);                                                                          \
-			if (format)                                                                                                      \
-				fprintf(stderr, format, ##__VA_ARGS__);                                                                        \
-			fputc('\n', stderr);                                                                                             \
-			fflush(stderr);                                                                                                  \
-		}                                                                                                                  \
-	} while (0)
+constexpr bool str_equal(char const *a, char const *b) {
+	return *a == *b && (*a == '\0' || str_equal(a + 1, b + 1));
+}
+template <class... Args> inline void say_impl(const char *caller, const char *format, Args &&... args) {
+	if constexpr (str_equal(BUILDTYPE, "Debug")) {
+		fprintf(stderr, "[%d] ", getpid());
+		fprintf(stderr, "[%s] ", caller);
+		if (format)
+			fprintf(stderr, format, args...);
+		fputc('\n', stderr);
+		fflush(stderr);
+	}
+}
 
-// TODO time utils, hooks at times, maybe a background service.
-// TODO fix cursor blink and cursor type not working!
+#define SAY(format, ...) say_impl(__FUNCTION__, format, ##__VA_ARGS__)
 
 #define HIG_DIALOG_CSS                                                                                                 \
 	"* {\n"                                                                                                              \
@@ -281,13 +282,13 @@ static void ume_set_size(void);
 static void ume_set_keybind(const gchar *, guint);
 static guint ume_get_keybind(const gchar *);
 static guint ume_load_keybind_or(const gchar *, const gchar *, guint);
-static void ume_config_done();
+static void ume_config_done(bool);
 static void ume_set_colorset(int);
 static void ume_set_colors(void);
 static guint ume_tokeycode(guint key);
 static void ume_fade_in(void);
 static void ume_fade_out(void);
-static void ume_reload_config_file(bool readonly);
+static void ume_reload_config_file();
 
 /* Globals for command line parameters */
 static const char *option_font;
@@ -306,6 +307,7 @@ static char *option_config_file;
 static gboolean option_fullscreen;
 static gboolean option_maximize;
 static gint option_colorset;
+static gint option_change_colorset = INT_MIN;
 
 static GOptionEntry entries[] = { // Command line flags
 		{"version", 'v', 0, G_OPTION_ARG_NONE, &option_version, N_("Print version number"), NULL},
@@ -327,6 +329,8 @@ static GOptionEntry entries[] = { // Command line flags
 		{"fullscreen", 's', 0, G_OPTION_ARG_NONE, &option_fullscreen, N_("Fullscreen mode"), NULL},
 		{"config-file", 0, 0, G_OPTION_ARG_FILENAME, &option_config_file, N_("Use alternate configuration file"), NULL},
 		{"colorset", 0, 0, G_OPTION_ARG_INT, &option_colorset, N_("Select initial colorset"), NULL},
+		{"change-colorset", 0, 0, G_OPTION_ARG_INT, &option_change_colorset,
+		 N_("Change the colorset of all open ume instances"), NULL},
 		{NULL}};
 
 static guint ume_tokeycode(guint key) {
@@ -743,7 +747,7 @@ static void ume_child_exited(GtkWidget *widget, void *data) {
 
 	/* Only write configuration to disk if it's the last tab */
 	if (npages == 1) {
-		ume_config_done();
+		ume_config_done(false);
 	}
 
 	if (option_hold == true) {
@@ -769,7 +773,7 @@ static void ume_eof(GtkWidget *widget, void *data) {
 
 	/* Only write configuration to disk if it's the last tab */
 	if (npages == 1) {
-		ume_config_done();
+		ume_config_done(false);
 	}
 
 	/* Workaround for libvte strange behaviour. There is not child-exited signal for
@@ -822,7 +826,7 @@ static void ume_title_changed(GtkWidget *widget, void *data) {
 }
 
 /* Save configuration */
-static void ume_config_done() {
+static void ume_config_done(bool forceWrite) {
 	GError *gerror = NULL;
 	gsize len = 0;
 
@@ -835,9 +839,6 @@ static void ume_config_done() {
 	/* Write to file IF there's been changes */
 	if (ume.config_modified) {
 		bool overwrite = true;
-		if (ume.config.ignore_overwrite)
-			overwrite = false;
-
 		if (ume.externally_modified && !ume.config.ignore_overwrite) { // TODO break this into a confirmation function
 			GtkWidget *dialog;
 			gint response;
@@ -855,7 +856,7 @@ static void ume_config_done() {
 				overwrite = false;
 		}
 
-		if (overwrite) {
+		if (overwrite || forceWrite) {
 			GIOChannel *cfgfile = g_io_channel_new_file(ume.configfile, "w", &gerror);
 			if (!cfgfile) {
 				fprintf(stderr, "%s\n", gerror->message);
@@ -887,7 +888,7 @@ static gboolean ume_delete_event(GtkWidget *widget, void *data) {
 		}
 	}
 
-	ume_config_done();
+	ume_config_done(false);
 	return false;
 }
 
@@ -1653,7 +1654,7 @@ static void ume_close_tab_callback(GtkWidget *, void *) {
 	gint npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
 	/* Only write configuration to disk if it's the last tab */
 	if (npages == 1) {
-		ume_config_done();
+		ume_config_done(false);
 	}
 
 	ume_close_tab(page);
@@ -1688,7 +1689,7 @@ static void ume_closebutton_clicked(GtkWidget *widget, void *data) {
 
 	/* Only write configuration to disk if it's the last tab */
 	if (npages == 1) {
-		ume_config_done();
+		ume_config_done(false);
 	}
 
 	/* Check if there are running processes for this tab. Use tcgetpgrp to compare to the shell PGID */
@@ -1720,11 +1721,6 @@ static void ume_closebutton_clicked(GtkWidget *widget, void *data) {
 static void ume_conf_changed(GtkWidget *widget, void *data) {
 	SAY("Config externally modified");
 	ume.externally_modified = true;
-	// if (ume.config.reload_config_on_modify) {
-	//	ume_reload_config_file(true);
-	//	SAY("Reloading config, last_colorset is %d", ume.config.last_colorset - 1);
-	//	ume_set_colorset(ume.config.last_colorset - 1);
-	//}
 }
 
 static void ume_disable_numbered_tabswitch(GtkWidget *widget, void *data) {
@@ -1778,23 +1774,12 @@ static term_colors_t ume_load_colorsets() {
 }
 
 // TODO make this return a config struct.
-static void ume_reload_config_file(bool readonly) {
+static void ume_reload_config_file() {
 	term_data_id = g_quark_from_static_string("ume_term");
 
 	/* Config file initialization*/
 	ume.cfg_file = g_key_file_new();
 	ume.config_modified = false;
-
-	std::string configdir = g_build_filename(g_get_user_config_dir(), "ume", NULL);
-	if (!g_file_test(g_get_user_config_dir(), G_FILE_TEST_EXISTS))
-		g_mkdir(g_get_user_config_dir(), 0755);
-	if (!g_file_test(configdir.data(), G_FILE_TEST_EXISTS))
-		g_mkdir(configdir.data(), 0755);
-	if (option_config_file) {
-		ume.configfile = g_build_filename(configdir.data(), option_config_file, NULL);
-	} else { /* Use more standard-conforming path for config files, if available. */
-		ume.configfile = g_build_filename(configdir.data(), DEFAULT_CONFIGFILE, NULL);
-	}
 
 	GError *error = NULL;
 	/* Open config file */
@@ -1939,8 +1924,23 @@ static void ume_reload_config_file(bool readonly) {
 	ume.config.ignore_overwrite = ume_load_config_or(cfg_group, "ignore_overwrite", false);
 }
 
+static void ume_config_load() {
+	std::string configdir = g_build_filename(g_get_user_config_dir(), "ume", NULL);
+	if (!g_file_test(g_get_user_config_dir(), G_FILE_TEST_EXISTS))
+		g_mkdir(g_get_user_config_dir(), 0755);
+	if (!g_file_test(configdir.data(), G_FILE_TEST_EXISTS))
+		g_mkdir(configdir.data(), 0755);
+	if (option_config_file) {
+		ume.configfile = g_build_filename(configdir.data(), option_config_file, NULL);
+	} else { /* Use more standard-conforming path for config files, if available. */
+		ume.configfile = g_build_filename(configdir.data(), DEFAULT_CONFIGFILE, NULL);
+	}
+
+	ume_reload_config_file();
+}
+
 static void ume_init() { // TODO break this glorious mega function .
-	ume_reload_config_file(false);
+	ume_config_load();
 
 	/* Use always GTK header bar*/
 	g_object_set(gtk_settings_get_default(), "gtk-dialogs-use-header", true, NULL);
@@ -2813,6 +2813,14 @@ static void ume_sanitize_working_directory() {
 	}
 }
 
+// Reload ume when it recieves
+static void ume_usr1_signal_handler(int signum) {
+	SAY("Caught SIGUSR1, reloading config file");
+	ume_reload_config_file();
+	SAY("New colorset %d", ume.config.last_colorset);
+	ume_set_colorset(ume.config.last_colorset - 1);
+}
+
 int main(int argc, char **argv) {
 	/* Localization */
 	setlocale(LC_ALL, "");
@@ -2876,10 +2884,28 @@ int main(int argc, char **argv) {
 		option_ntabs = 1;
 	}
 
+	if (option_change_colorset != INT_MIN) {
+		if (option_change_colorset > 0 && option_change_colorset <= NUM_COLORSETS) {
+			ume_config_load();
+			ume_set_config(cfg_group, "last_colorset", option_change_colorset - 1);
+			SAY("Setting colorset %d", option_change_colorset);
+			ume.config_modified = true;
+			ume.externally_modified = false;
+			ume_config_done(true);
+			system("killall -USR1 ume");
+			return 0;
+		} else {
+			fprintf(stderr, "Colorset %d is not a valid colorset, please use a number between 1 and %d",
+							option_change_colorset, NUM_COLORSETS);
+			return 1;
+		}
+	}
+
 	/* Init stuff */
 	gtk_init(&nargc, &nargv);
 	g_strfreev(nargv);
 	ume_init();
+	signal(SIGUSR1, ume_usr1_signal_handler);
 
 	/* Add initial tabs (1 by default) */
 	for (int i = 0; i < option_ntabs; i++)
