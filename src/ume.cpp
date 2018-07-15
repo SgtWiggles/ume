@@ -2898,7 +2898,7 @@ int main(int argc, char **argv) {
 	if (option_change_colorset != INT_MIN) {
 		if (option_change_colorset > 0 && option_change_colorset <= NUM_COLORSETS) {
 			ume_config_load();
-			ume_set_config(cfg_group, "last_colorset", option_change_colorset - 1);
+			ume_set_config(cfg_group, "last_colorset", option_change_colorset);
 			SAY("Setting colorset %d", option_change_colorset);
 			ume.config_modified = true;
 			ume.externally_modified = false;
