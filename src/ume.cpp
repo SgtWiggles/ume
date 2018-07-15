@@ -1720,11 +1720,11 @@ static void ume_closebutton_clicked(GtkWidget *widget, void *data) {
 static void ume_conf_changed(GtkWidget *widget, void *data) {
 	SAY("Config externally modified");
 	ume.externally_modified = true;
-	if (ume.config.reload_config_on_modify) {
-		ume_reload_config_file(true);
-		SAY("Reloading config, last_colorset is %d", ume.config.last_colorset - 1);
-		ume_set_colorset(ume.config.last_colorset - 1);
-	}
+	// if (ume.config.reload_config_on_modify) {
+	//	ume_reload_config_file(true);
+	//	SAY("Reloading config, last_colorset is %d", ume.config.last_colorset - 1);
+	//	ume_set_colorset(ume.config.last_colorset - 1);
+	//}
 }
 
 static void ume_disable_numbered_tabswitch(GtkWidget *widget, void *data) {
@@ -1777,7 +1777,7 @@ static term_colors_t ume_load_colorsets() {
 	return colors;
 }
 
-// TODO make this return a config struct!
+// TODO make this return a config struct.
 static void ume_reload_config_file(bool readonly) {
 	term_data_id = g_quark_from_static_string("ume_term");
 
@@ -1816,8 +1816,8 @@ static void ume_reload_config_file(bool readonly) {
 	}
 
 	SAY("Reloading config file");
-	using cfgtmp_t = unique_g_ptr<const gchar>;
-	cfgtmp_t cfgtmp = nullptr;
+	using g_str_ptr = unique_g_ptr<const gchar>;
+	g_str_ptr cfgtmp = nullptr;
 
 	/* We can safely ignore errors from g_key_file_get_value(), since if the
 	 * call to g_key_file_has_key() was successful, the key IS there. From the
@@ -1833,10 +1833,10 @@ static void ume_reload_config_file(bool readonly) {
 	ume.config.scroll_lines = ume_load_config_or(cfg_group, "scroll_lines", DEFAULT_SCROLL_LINES);
 	ume.config.scroll_amount = ume_load_config_or(cfg_group, "scroll_amount", DEFAULT_SCROLL_AMOUNT);
 
-	cfgtmp = cfgtmp_t(ume_load_config_or(cfg_group, "font", DEFAULT_FONT));
+	cfgtmp = g_str_ptr(ume_load_config_or(cfg_group, "font", DEFAULT_FONT));
 	ume.config.font = pango_font_description_from_string(cfgtmp.get());
 
-	cfgtmp = cfgtmp_t(ume_load_config_or(cfg_group, "show_always_first_tab", "No"));
+	cfgtmp = g_str_ptr(ume_load_config_or(cfg_group, "show_always_first_tab", "No"));
 	ume.config.first_tab = (strcmp(cfgtmp.get(), "Yes") == 0) ? true : false;
 
 	ume.config.show_scrollbar = ume_load_config_or(cfg_group, "scrollbar", false);
@@ -1848,22 +1848,22 @@ static void ume_reload_config_file(bool readonly) {
 	ume.config.use_fading = ume_load_config_or(cfg_group, "use_fading", false);
 	ume.config.scrollable_tabs = ume_load_config_or(cfg_group, "scrollable_tabs", true);
 
-	cfgtmp = cfgtmp_t(ume_load_config_or(cfg_group, "urgent_bell", "Yes"));
+	cfgtmp = g_str_ptr(ume_load_config_or(cfg_group, "urgent_bell", "Yes"));
 	ume.config.urgent_bell = (strcmp(cfgtmp.get(), "Yes") == 0);
 
-	cfgtmp = cfgtmp_t(ume_load_config_or(cfg_group, "audible_bell", "Yes"));
+	cfgtmp = g_str_ptr(ume_load_config_or(cfg_group, "audible_bell", "Yes"));
 	ume.config.audible_bell = (strcmp(cfgtmp.get(), "Yes") == 0);
 
-	cfgtmp = cfgtmp_t(ume_load_config_or(cfg_group, "blinking_cursor", "No"));
+	cfgtmp = g_str_ptr(ume_load_config_or(cfg_group, "blinking_cursor", "No"));
 	ume.config.blinking_cursor = (strcmp(cfgtmp.get(), "Yes") == 0);
 
-	cfgtmp = cfgtmp_t(ume_load_config_or(cfg_group, "stop_tab_cycling_at_end_tabs", "No"));
+	cfgtmp = g_str_ptr(ume_load_config_or(cfg_group, "stop_tab_cycling_at_end_tabs", "No"));
 	ume.config.stop_tab_cycling_at_end_tabs = (strcmp(cfgtmp.get(), "Yes") == 0);
 
-	cfgtmp = cfgtmp_t(ume_load_config_or(cfg_group, "allow_bold", "Yes"));
+	cfgtmp = g_str_ptr(ume_load_config_or(cfg_group, "allow_bold", "Yes"));
 	ume.config.allow_bold = (strcmp(cfgtmp.get(), "Yes") == 0);
 
-	cfgtmp = cfgtmp_t(ume_load_config_or(cfg_group, "cursor_type", "block"));
+	cfgtmp = g_str_ptr(ume_load_config_or(cfg_group, "cursor_type", "block"));
 	if (strcmp(cfgtmp.get(), "block") == 0) {
 		ume.config.cursor_type = VTE_CURSOR_SHAPE_BLOCK;
 	} else if (strcmp(cfgtmp.get(), "underline") == 0) {
@@ -1880,8 +1880,6 @@ static void ume_reload_config_file(bool readonly) {
 
 	// ----- Begin of keybinds -----
 	// TODO make a keybind struct with accelerator and key bundled together.
-	// ume.config.add_tab_accelerator = ume_load_config_or(cfg_group, "add_tab_accelerator",
-	// DEFAULT_ADD_TAB_ACCELERATOR);
 	ume.config.add_tab_accelerator = ume_load_config_or(cfg_group, "add_tab_accelerator", DEFAULT_ADD_TAB_ACCELERATOR);
 	ume.config.add_tab_key = ume_load_keybind_or(cfg_group, "add_tab_key", DEFAULT_ADD_TAB_KEY);
 
@@ -1937,7 +1935,7 @@ static void ume_reload_config_file(bool readonly) {
 
 	/* set default title pattern from config or NULL */
 	ume.config.tab_default_title = g_key_file_get_string(ume.cfg_file, cfg_group, "tab_default_title", NULL);
-	ume.config.reload_config_on_modify = ume_load_config_or(cfg_group, "reload_config_on_modify", false);
+	// ume.config.reload_config_on_modify = ume_load_config_or(cfg_group, "reload_config_on_modify", false);
 	ume.config.ignore_overwrite = ume_load_config_or(cfg_group, "ignore_overwrite", false);
 }
 
@@ -2752,8 +2750,7 @@ static void ume_del_tab(gint page) {
 }
 
 static void ume_set_keybind(const gchar *key, guint value) {
-	char *valname;
-	valname = gdk_keyval_name(value);
+	char *valname = gdk_keyval_name(value);
 	g_key_file_set_string(ume.cfg_file, cfg_group, key, valname);
 	ume.config_modified = true;
 	// FIXME: free() valname?

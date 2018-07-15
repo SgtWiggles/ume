@@ -46,95 +46,6 @@ struct term_colors_t {
 using accel_t = guint;
 using keycode_t = guint;
 
-struct keybind_t {
-	keycode_t key = GDK_KEY_VoidSymbol;
-	accel_t accelerator = 0;
-};
-
-static guint tokeycode(guint key) {
-	GdkKeymap *keymap;
-	GdkKeymapKey *keys;
-	gint n_keys;
-	guint res = 0;
-	keymap = gdk_keymap_get_for_display(gdk_display_get_default());
-
-	if (gdk_keymap_get_entries_for_keyval(keymap, key, &keys, &n_keys)) {
-		if (n_keys > 0) {
-			res = keys[0].keycode;
-		}
-		g_free(keys);
-	}
-	return res;
-}
-
-//& keybind.accelerator
-static inline bool keybind_pressed(const keybind_t &keybind, const keybind_t &pressedKey) {
-	return (pressedKey.accelerator & keybind.accelerator) == keybind.accelerator &&
-				 tokeycode(keybind.key) == pressedKey.key;
-}
-
-struct keybind_t parse_keybind(const char *cstr) {
-	assert(cstr != nullptr);
-	const std::string sep = "+";
-	keybind_t bind;
-
-	auto str = std::string(cstr);
-	if (str.size() == 0) // Empty strings are unbound keys
-		return bind;
-
-	str.erase(std::remove_if(std::begin(str), std::end(str), isspace), std::end(str));
-	std::transform(std::begin(str), std::end(str), std::begin(str), toupper);
-	str.push_back('+');
-
-	size_t pos = 0;
-	std::string tok;
-
-	while ((pos = str.find(sep)) != std::string::npos) {
-		tok = str.substr(0, pos);
-		if (tok == "SHIFT") {
-			bind.accelerator |= GDK_SHIFT_MASK;
-		} else if (tok == "LOCK" || tok == "CAPS") {
-			bind.accelerator |= GDK_LOCK_MASK;
-		} else if (tok == "CONTROL" || tok == "CTRL") {
-			bind.accelerator |= GDK_CONTROL_MASK;
-		} else if (tok == "MOD1" || tok == "ALT") {
-			bind.accelerator |= GDK_MOD1_MASK;
-		} else if (tok == "MOD2") {
-			bind.accelerator |= GDK_MOD2_MASK;
-		} else if (tok == "MOD3") {
-			bind.accelerator |= GDK_MOD3_MASK;
-		} else if (tok == "MOD4") {
-			bind.accelerator |= GDK_MOD4_MASK;
-		} else if (tok == "MOD5") {
-			bind.accelerator |= GDK_MOD5_MASK;
-		} else if (tok == "BUTTON1") {
-			bind.accelerator |= GDK_BUTTON1_MASK;
-		} else if (tok == "BUTTON2") {
-			bind.accelerator |= GDK_BUTTON2_MASK;
-		} else if (tok == "BUTTON3") {
-			bind.accelerator |= GDK_BUTTON3_MASK;
-		} else if (tok == "BUTTON4") {
-			bind.accelerator |= GDK_BUTTON4_MASK;
-		} else if (tok == "BUTTON5") {
-			bind.accelerator |= GDK_BUTTON5_MASK;
-		} else if (tok == "SUPER") {
-			bind.accelerator |= GDK_SUPER_MASK;
-		} else if (tok == "HYPER") {
-			bind.accelerator |= GDK_HYPER_MASK;
-		} else if (tok == "META") {
-			bind.accelerator |= GDK_META_MASK;
-		} else if (bind.key == GDK_KEY_VoidSymbol) {
-			bind.key = gdk_keyval_from_name(tok.c_str());
-		} else {
-			fprintf(stderr, "Error parsing keybind, multiple keys defined or unknown key in string \"%s\" (token: \"%s\")\n",
-							cstr, tok.c_str());
-		}
-		str.erase(0, pos + sep.size());
-	}
-
-	return bind;
-}
-
 struct config_t {
 	gint scroll_lines;
 	gint scroll_amount;
@@ -158,7 +69,7 @@ struct config_t {
 	bool use_fading;
 	bool scrollable_tabs;
 
-	bool reload_config_on_modify;
+	// bool reload_config_on_modify;
 	bool ignore_overwrite;
 
 	const char *icon;
@@ -175,9 +86,6 @@ struct config_t {
 	keycode_t add_tab_key;
 	accel_t del_tab_accelerator;
 	keycode_t del_tab_key;
-
-	// keybind_t add_tab_key;
-	// keybind_t del_tab_key;
 
 	accel_t switch_tab_accelerator;
 	accel_t move_tab_accelerator;
@@ -335,3 +243,67 @@ struct config_t {
 //	config.reload_config_on_modify = ume_load_config_or(cfg_group, "reload_config_on_modify", false);
 //	config.ignore_overwrite = ume_load_config_or(cfg_group, "ignore_overwrite", false);
 //}
+
+/*
+ *struct keybind_t parse_keybind(const char *cstr) {
+ *  assert(cstr != nullptr);
+ *  const std::string sep = "+";
+ *  keybind_t bind;
+ *
+ *  auto str = std::string(cstr);
+ *  if (str.size() == 0) // Empty strings are unbound keys
+ *    return bind;
+ *
+ *  str.erase(std::remove_if(std::begin(str), std::end(str), isspace), std::end(str));
+ *  std::transform(std::begin(str), std::end(str), std::begin(str), toupper);
+ *  str.push_back('+');
+ *
+ *  size_t pos = 0;
+ *  std::string tok;
+ *
+ *  while ((pos = str.find(sep)) != std::string::npos) {
+ *    tok = str.substr(0, pos);
+ *    if (tok == "SHIFT") {
+ *      bind.accelerator |= GDK_SHIFT_MASK;
+ *    } else if (tok == "LOCK" || tok == "CAPS") {
+ *      bind.accelerator |= GDK_LOCK_MASK;
+ *    } else if (tok == "CONTROL" || tok == "CTRL") {
+ *      bind.accelerator |= GDK_CONTROL_MASK;
+ *    } else if (tok == "MOD1" || tok == "ALT") {
+ *      bind.accelerator |= GDK_MOD1_MASK;
+ *    } else if (tok == "MOD2") {
+ *      bind.accelerator |= GDK_MOD2_MASK;
+ *    } else if (tok == "MOD3") {
+ *      bind.accelerator |= GDK_MOD3_MASK;
+ *    } else if (tok == "MOD4") {
+ *      bind.accelerator |= GDK_MOD4_MASK;
+ *    } else if (tok == "MOD5") {
+ *      bind.accelerator |= GDK_MOD5_MASK;
+ *    } else if (tok == "BUTTON1") {
+ *      bind.accelerator |= GDK_BUTTON1_MASK;
+ *    } else if (tok == "BUTTON2") {
+ *      bind.accelerator |= GDK_BUTTON2_MASK;
+ *    } else if (tok == "BUTTON3") {
+ *      bind.accelerator |= GDK_BUTTON3_MASK;
+ *    } else if (tok == "BUTTON4") {
+ *      bind.accelerator |= GDK_BUTTON4_MASK;
+ *    } else if (tok == "BUTTON5") {
+ *      bind.accelerator |= GDK_BUTTON5_MASK;
+ *    } else if (tok == "SUPER") {
+ *      bind.accelerator |= GDK_SUPER_MASK;
+ *    } else if (tok == "HYPER") {
+ *      bind.accelerator |= GDK_HYPER_MASK;
+ *    } else if (tok == "META") {
+ *      bind.accelerator |= GDK_META_MASK;
+ *    } else if (bind.key == GDK_KEY_VoidSymbol) {
+ *      bind.key = gdk_keyval_from_name(tok.c_str());
+ *    } else {
+ *      fprintf(stderr, "Error parsing keybind, multiple keys defined or unknown key in string \"%s\" (token:
+ *\"%s\")\n", cstr, tok.c_str());
+ *    }
+ *    str.erase(0, pos + sep.size());
+ *  }
+ *
+ *  return bind;
+ *}
+ */
