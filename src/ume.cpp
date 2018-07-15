@@ -537,6 +537,14 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 		return true;
 	}
 
+	if ((event->state & ume.config.reload_accelerator) == ume.config.reload_accelerator) {
+		if (keycode == ume_tokeycode(ume.config.reload_key)) {
+			ume_reload_config_file();
+			ume_set_colorset(ume.config.last_colorset - 1);
+			return true;
+		}
+	}
+
 	/* Change in colorset */
 	if ((event->state & ume.config.set_colorset_accelerator) == ume.config.set_colorset_accelerator) {
 		int i;
@@ -1904,6 +1912,9 @@ static void ume_reload_config_file() {
 			ume_load_keybind_or(cfg_group, "decrease_font_size_key", DEFAULT_DECREASE_FONT_SIZE_KEY);
 
 	ume.config.fullscreen_key = ume_load_keybind_or(cfg_group, "fullscreen_key", DEFAULT_FULLSCREEN_KEY);
+
+	ume.config.reload_accelerator = ume_load_config_or(cfg_group, "reload_accelerator", DEFAULT_RELOAD_ACCELERATOR);
+	ume.config.reload_key = ume_load_keybind_or(cfg_group, "reload_key", DEFAULT_RELOAD_KEY);
 
 	ume.config.set_colorset_accelerator =
 			ume_load_config_or(cfg_group, "set_colorset_accelerator", DEFAULT_SELECT_COLORSET_ACCELERATOR);

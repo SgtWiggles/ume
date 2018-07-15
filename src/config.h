@@ -80,6 +80,9 @@ struct config_t {
 	accel_t search_accelerator;
 	gint search_key;
 
+	accel_t reload_accelerator;
+	keycode_t reload_key;
+
 	gint fullscreen_key;
 
 	accel_t font_size_accelerator;
