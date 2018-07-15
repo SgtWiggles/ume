@@ -121,7 +121,7 @@ When ume receives the signal USR1 it reloads the config file. Thus one can reloa
 - [ ] Better way to configure modifier keys (replace accelerator numbers with strings)  
 - [ ] Change yes/no in config file to true false values  
 - [ ] Update [INSTALL](INSTALL)  
-- [ ] Reload settings keybind
+- [x] Reload settings keybind
 - [x] Replace automated reloading with signals
 - [x] Change booleans in config file to true false values  
 - [x] Remove wall of warnings when building 
