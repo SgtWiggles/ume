@@ -240,7 +240,6 @@ static gboolean ume_focus_out(GtkWidget *, GdkEvent *, void *);
 static void ume_closebutton_clicked(GtkWidget *, void *);
 static void ume_conf_changed(GtkWidget *, void *);
 static void ume_window_show_event(GtkWidget *, gpointer);
-// static gboolean ume_notebook_focus_in (GtkWidget *, void *);
 static gboolean ume_notebook_scroll(GtkWidget *, GdkEventScroll *);
 static bool ume_close_tab(gint tab);
 
@@ -621,22 +620,23 @@ static gboolean ume_button_press(GtkWidget *widget, GdkEventButton *button_event
 static gboolean ume_focus_in(GtkWidget *widget, GdkEvent *event, void *data) {
 	if (event->type != GDK_FOCUS_CHANGE)
 		return false;
+	SAY("Focus in event");
 
 	/* Ignore first focus event */
-	if (ume.first_focus) {
-		ume.first_focus = false;
-		return false;
-	}
+	/*
+	 *if (ume.first_focus) {
+	 *  ume.first_focus = false;
+	 *  return false;
+	 *}
+	 */
 
 	if (!ume.focused) {
 		ume.focused = true;
-
-		if (!ume.first_focus && ume.config.use_fading) {
+		if (ume.config.use_fading) {
 			ume_fade_in();
 		}
-
 		ume_set_colors();
-		return true;
+		// return true;
 	}
 
 	return false;
@@ -645,11 +645,11 @@ static gboolean ume_focus_in(GtkWidget *widget, GdkEvent *event, void *data) {
 static gboolean ume_focus_out(GtkWidget *widget, GdkEvent *event, void *data) {
 	if (event->type != GDK_FOCUS_CHANGE)
 		return false;
+	SAY("Focus out event");
 
 	if (ume.focused) {
 		ume.focused = false;
-
-		if (!ume.first_focus && ume.config.use_fading) {
+		if (ume.config.use_fading) {
 			ume_fade_out();
 		}
 
@@ -745,12 +745,9 @@ static void ume_decrease_font(GtkWidget *widget, void *data) {
 }
 
 static void ume_child_exited(GtkWidget *widget, void *data) {
-	gint page, npages;
-	struct terminal *term;
-
-	page = gtk_notebook_page_num(GTK_NOTEBOOK(ume.notebook), gtk_widget_get_parent(widget));
-	npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
-	term = ume_get_page_term(ume, page);
+	gint page = gtk_notebook_page_num(GTK_NOTEBOOK(ume.notebook), gtk_widget_get_parent(widget));
+	gint npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
+	struct terminal *term = ume_get_page_term(ume, page);
 
 	/* Only write configuration to disk if it's the last tab */
 	if (npages == 1) {
@@ -2076,7 +2073,6 @@ static void ume_init() { // TODO break this glorious mega function .
 	g_signal_connect(G_OBJECT(ume.main_window), "focus-out-event", G_CALLBACK(ume_focus_out), NULL);
 	g_signal_connect(G_OBJECT(ume.main_window), "focus-in-event", G_CALLBACK(ume_focus_in), NULL);
 	g_signal_connect(G_OBJECT(ume.main_window), "show", G_CALLBACK(ume_window_show_event), NULL);
-	// g_signal_connect(G_OBJECT(ume.notebook), "focus-in-event", G_CALLBACK(ume_notebook_focus_in), NULL);
 	g_signal_connect(ume.notebook, "scroll-event", G_CALLBACK(ume_notebook_scroll), NULL);
 }
 
