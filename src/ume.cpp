@@ -158,11 +158,12 @@ struct terminal {
  * error instead of a runtime if NUM_COLORSETS changes */
 static int cs_keys[NUM_COLORSETS] = {GDK_KEY_F1, GDK_KEY_F2, GDK_KEY_F3, GDK_KEY_F4, GDK_KEY_F5, GDK_KEY_F6};
 
-#define ERROR_BUFFER_LENGTH 256
+static constexpr unsigned ERROR_BUFFER_LENGTH = 256;
 const char cfg_group[] = "ume";
 
 static GQuark term_data_id = 0;
-// Maybe template this?
+
+// Inline function this.
 #define ume_get_page_term(ume, page_idx)                                                                               \
 	(struct terminal *)g_object_get_qdata(G_OBJECT(gtk_notebook_get_nth_page((GtkNotebook *)ume.notebook, page_idx)),    \
 																				term_data_id);
@@ -176,9 +177,7 @@ template <> inline void ume_set_config<gint>(const gchar *group, const gchar *ke
 	g_key_file_set_integer(ume.cfg_file, group, key, value);
 	ume.config_modified = true;
 }
-
-// TODO find the line where this is getting called.
-template <> inline void ume_set_config<GdkModifierType>(const gchar *group, const gchar *key, GdkModifierType value) {
+template <> inline void ume_set_config<guint>(const gchar *group, const gchar *key, guint value) {
 	g_key_file_set_integer(ume.cfg_file, group, key, value);
 	ume.config_modified = true;
 }
@@ -186,13 +185,6 @@ template <> inline void ume_set_config<const gchar *>(const gchar *group, const 
 	g_key_file_set_string(ume.cfg_file, group, key, value);
 	ume.config_modified = true;
 }
-/*
- *template <> inline void ume_set_config<gchar *>(const gchar *group, const gchar *key, gchar *value) {
- *  g_key_file_set_string(ume.cfg_file, group, key, value);
- *  ume.config_modified = true;
- *}
- */
-
 template <> inline void ume_set_config<bool>(const char *group, const char *key, bool value) {
 	g_key_file_set_boolean(ume.cfg_file, group, key, value);
 	ume.config_modified = true;
@@ -203,6 +195,9 @@ template <class T> inline T ume_config_get(const gchar *group, const gchar *key)
 	return g_key_file_get_value(ume.cfg_file, group, key, nullptr);
 }
 template <> inline gint ume_config_get<gint>(const gchar *group, const gchar *key) {
+	return g_key_file_get_integer(ume.cfg_file, group, key, nullptr);
+}
+template <> inline guint ume_config_get<guint>(const gchar *group, const gchar *key) {
 	return g_key_file_get_integer(ume.cfg_file, group, key, nullptr);
 }
 template <> inline bool ume_config_get<bool>(const gchar *group, const gchar *key) {
@@ -405,25 +400,15 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 			/* User has explicitly disabled this branch, make sure to propagate the event */
 			if (ume.config.disable_numbered_tabswitch)
 				return false;
-
-			if (ume_tokeycode(GDK_KEY_1) == keycode)
-				topage = 0;
-			else if (ume_tokeycode(GDK_KEY_2) == keycode)
-				topage = 1;
-			else if (ume_tokeycode(GDK_KEY_3) == keycode)
-				topage = 2;
-			else if (ume_tokeycode(GDK_KEY_4) == keycode)
-				topage = 3;
-			else if (ume_tokeycode(GDK_KEY_5) == keycode)
-				topage = 4;
-			else if (ume_tokeycode(GDK_KEY_6) == keycode)
-				topage = 5;
-			else if (ume_tokeycode(GDK_KEY_7) == keycode)
-				topage = 6;
-			else if (ume_tokeycode(GDK_KEY_8) == keycode)
-				topage = 7;
-			else if (ume_tokeycode(GDK_KEY_9) == keycode)
-				topage = 8;
+			static constexpr std::array<guint, 9> swap_keys = {GDK_KEY_1, GDK_KEY_2, GDK_KEY_3, GDK_KEY_4, GDK_KEY_5,
+																												 GDK_KEY_6, GDK_KEY_7, GDK_KEY_8, GDK_KEY_9};
+			topage = INT_MAX;
+			for (size_t i = 0; i < swap_keys.size(); ++i) {
+				if (ume_tokeycode(swap_keys[i]) == keycode) {
+					topage = i;
+					break;
+				}
+			}
 			if (topage <= npages)
 				gtk_notebook_set_current_page(GTK_NOTEBOOK(ume.notebook), topage);
 			return true;
@@ -504,10 +489,8 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 
 	// Scroll up and down with ctrl j, k
 	if ((event->state & ume.config.scrollbar_modifier) == ume.config.scrollbar_modifier) {
-		gint page;
-		struct terminal *term;
-		page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
-		term = ume_get_page_term(ume, page);
+		gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
+		struct terminal *term = ume_get_page_term(ume, page);
 		VteTerminal *vte = (VteTerminal *)term->vte;
 
 		const int scroll_amount = [](guint keycode, VteTerminal *vte) {
@@ -546,8 +529,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 
 	/* Change in colorset */
 	if ((event->state & ume.config.set_colorset_modifier) == ume.config.set_colorset_modifier) {
-		int i;
-		for (i = 0; i < NUM_COLORSETS; i++) {
+		for (int i = 0; i < NUM_COLORSETS; i++) {
 			if (keycode == ume_tokeycode(ume.config.set_colorset_keys[i])) {
 				ume_set_colorset(i);
 				return true;
@@ -2827,7 +2809,6 @@ static void ume_sanitize_working_directory() {
 static void ume_usr1_signal_handler(int signum) {
 	SAY("Caught SIGUSR1, reloading config file");
 	ume_reload_config_file();
-	SAY("New colorset %d", ume.config.last_colorset);
 	ume_set_colorset(ume.config.last_colorset - 1);
 }
 

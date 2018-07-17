@@ -1,70 +1,71 @@
 #pragma once
+#include <gdk/gdk.h>
 
-#define ICON_FILE "terminal-tango.svg"
-#define SCROLL_LINES 4096
-#define DEFAULT_SCROLL_LINES 4096
-#define HTTP_REGEXP "(ftp|http)s?://[^ \t\n\b()<>{}«»\\[\\]\'\"]+[^.]"
-#define MAIL_REGEXP "[^ \t\n\b]+@([^ \t\n\b]+\\.)+([a-zA-Z]{2,4})"
-#define DEFAULT_CONFIGFILE "ume.conf"
-#define DEFAULT_COLUMNS 80
-#define DEFAULT_ROWS 24
-#define DEFAULT_FONT "Ubuntu Mono,monospace 12"
-#define FONT_MINIMAL_SIZE (PANGO_SCALE * 6)
-#define DEFAULT_WORD_CHARS "-,./?%&#_~:"
-#define TAB_MAX_SIZE 40
-#define TAB_MIN_SIZE 6
-#define FORWARD 1
-#define BACKWARDS 2
-#define FADE_PERCENT 10
-#define DEFAULT_ADD_TAB_MODIFIER (GDK_CONTROL_MASK | GDK_SHIFT_MASK)
-#define DEFAULT_DEL_TAB_MODIFIER (GDK_CONTROL_MASK | GDK_SHIFT_MASK)
-#define DEFAULT_SWITCH_TAB_MODIFIER (GDK_CONTROL_MASK)
-#define DEFAULT_MOVE_TAB_MODIFIER (GDK_CONTROL_MASK | GDK_SHIFT_MASK)
-#define DEFAULT_COPY_MODIFIER (GDK_CONTROL_MASK | GDK_SHIFT_MASK)
-#define DEFAULT_SCROLLBAR_MODIFIER (GDK_CONTROL_MASK | GDK_SHIFT_MASK)
-#define DEFAULT_OPEN_URL_MODIFIER (GDK_CONTROL_MASK | GDK_SHIFT_MASK)
-#define DEFAULT_FONT_SIZE_MODIFIER (GDK_CONTROL_MASK | GDK_SHIFT_MASK)
-#define DEFAULT_SET_TAB_NAME_MODIFIER (GDK_CONTROL_MASK | GDK_SHIFT_MASK)
-#define DEFAULT_SEARCH_MODIFIER (GDK_CONTROL_MASK | GDK_SHIFT_MASK)
-#define DEFAULT_SELECT_COLORSET_MODIFIER (GDK_CONTROL_MASK | GDK_SHIFT_MASK)
-#define DEFAULT_ADD_TAB_KEY GDK_KEY_T
-#define DEFAULT_DEL_TAB_KEY GDK_KEY_W
-#define DEFAULT_PREV_TAB_KEY GDK_KEY_Left
-#define DEFAULT_NEXT_TAB_KEY GDK_KEY_Right
-#define DEFAULT_COPY_KEY GDK_KEY_C
-#define DEFAULT_PASTE_KEY GDK_KEY_V
+static constexpr const char *ICON_FILE = "terminal-tango.svg";
+static constexpr int SCROLL_LINES = 4096;
+static constexpr int DEFAULT_SCROLL_LINES = 4096;
+static constexpr const char *HTTP_REGEXP = "(ftp|http)s?://[^ \t\n\b()<>{}«»\\[\\]\'\"]+[^.]";
+static constexpr const char *MAIL_REGEXP = "[^ \t\n\b]+@([^ \t\n\b]+\\.)+([a-zA-Z]{2,4})";
+static constexpr const char *DEFAULT_CONFIGFILE = "ume.conf";
+static constexpr int DEFAULT_COLUMNS = 80;
+static constexpr int DEFAULT_ROWS = 24;
+static constexpr const char *DEFAULT_FONT = "Ubuntu Mono,monospace 12";
+static constexpr int FONT_MINIMAL_SIZE = (PANGO_SCALE * 6);
+static constexpr const char *DEFAULT_WORD_CHARS = "-,./?%&#_~:";
+static constexpr int TAB_MAX_SIZE = 40;
+static constexpr int TAB_MIN_SIZE = 6;
+static constexpr int FORWARD = 1;
+static constexpr int BACKWARDS = 2;
+static constexpr int FADE_PERCENT = 10;
+static constexpr guint DEFAULT_ADD_TAB_MODIFIER = (GDK_CONTROL_MASK | GDK_SHIFT_MASK);
+static constexpr guint DEFAULT_DEL_TAB_MODIFIER = (GDK_CONTROL_MASK | GDK_SHIFT_MASK);
+static constexpr guint DEFAULT_SWITCH_TAB_MODIFIER = (GDK_CONTROL_MASK);
+static constexpr guint DEFAULT_MOVE_TAB_MODIFIER = (GDK_CONTROL_MASK | GDK_SHIFT_MASK);
+static constexpr guint DEFAULT_COPY_MODIFIER = (GDK_CONTROL_MASK | GDK_SHIFT_MASK);
+static constexpr guint DEFAULT_SCROLLBAR_MODIFIER = (GDK_CONTROL_MASK | GDK_SHIFT_MASK);
+static constexpr guint DEFAULT_OPEN_URL_MODIFIER = (GDK_CONTROL_MASK | GDK_SHIFT_MASK);
+static constexpr guint DEFAULT_FONT_SIZE_MODIFIER = (GDK_CONTROL_MASK | GDK_SHIFT_MASK);
+static constexpr guint DEFAULT_SET_TAB_NAME_MODIFIER = (GDK_CONTROL_MASK | GDK_SHIFT_MASK);
+static constexpr guint DEFAULT_SEARCH_MODIFIER = (GDK_CONTROL_MASK | GDK_SHIFT_MASK);
+static constexpr guint DEFAULT_SELECT_COLORSET_MODIFIER = (GDK_CONTROL_MASK | GDK_SHIFT_MASK);
+static constexpr guint DEFAULT_ADD_TAB_KEY = GDK_KEY_T;
+static constexpr guint DEFAULT_DEL_TAB_KEY = GDK_KEY_W;
+static constexpr guint DEFAULT_PREV_TAB_KEY = GDK_KEY_Left;
+static constexpr guint DEFAULT_NEXT_TAB_KEY = GDK_KEY_Right;
+static constexpr guint DEFAULT_COPY_KEY = GDK_KEY_C;
+static constexpr guint DEFAULT_PASTE_KEY = GDK_KEY_V;
 
-#define DEFAULT_SCROLLBAR_KEY GDK_KEY_S
-#define DEFAULT_SCROLL_UP_KEY GDK_KEY_K
-#define DEFAULT_SCROLL_DOWN_KEY GDK_KEY_J
-#define DEFAULT_PAGE_UP_KEY GDK_KEY_U
-#define DEFAULT_PAGE_DOWN_KEY GDK_KEY_D
-#define DEFAULT_SCROLL_AMOUNT 10
+static constexpr guint DEFAULT_SCROLLBAR_KEY = GDK_KEY_S;
+static constexpr guint DEFAULT_SCROLL_UP_KEY = GDK_KEY_K;
+static constexpr guint DEFAULT_SCROLL_DOWN_KEY = GDK_KEY_J;
+static constexpr guint DEFAULT_PAGE_UP_KEY = GDK_KEY_U;
+static constexpr guint DEFAULT_PAGE_DOWN_KEY = GDK_KEY_D;
+static constexpr int DEFAULT_SCROLL_AMOUNT = 10;
 
-#define DEFAULT_SET_TAB_NAME_KEY GDK_KEY_N
-#define DEFAULT_SEARCH_KEY GDK_KEY_F
-#define DEFAULT_FULLSCREEN_KEY GDK_KEY_F11
-#define DEFAULT_INCREASE_FONT_SIZE_KEY GDK_KEY_plus
-#define DEFAULT_DECREASE_FONT_SIZE_KEY GDK_KEY_minus
-#define DEFAULT_SCROLLABLE_TABS TRUE
+static constexpr guint DEFAULT_SET_TAB_NAME_KEY = GDK_KEY_N;
+static constexpr guint DEFAULT_SEARCH_KEY = GDK_KEY_F;
+static constexpr guint DEFAULT_FULLSCREEN_KEY = GDK_KEY_F11;
+static constexpr guint DEFAULT_INCREASE_FONT_SIZE_KEY = GDK_KEY_plus;
+static constexpr guint DEFAULT_DECREASE_FONT_SIZE_KEY = GDK_KEY_minus;
+static constexpr bool DEFAULT_SCROLLABLE_TABS = false;
 
-#define DEFAULT_RELOAD_MODIFIER 5
-#define DEFAULT_RELOAD_KEY GDK_KEY_R
+static constexpr int DEFAULT_RELOAD_MODIFIER = 5;
+static constexpr guint DEFAULT_RELOAD_KEY = GDK_KEY_R;
 
-#define NUM_COLORSETS 6
+static constexpr int NUM_COLORSETS = 6;
 
-#define COLOR_GROUP_KEY "colors%d"
-#define COLOR_FOREGROUND_KEY "foreground"
-#define COLOR_BACKGROUND_KEY "background"
-#define COLOR_CURSOR_KEY "cursor"
-#define COLOR_PALETTE_KEY "color%u"
-#define COLOR_SWITCH_KEY "colors%u_key"
+static constexpr const char *COLOR_GROUP_KEY = "colors%d";
+static constexpr const char *COLOR_FOREGROUND_KEY = "foreground";
+static constexpr const char *COLOR_BACKGROUND_KEY = "background";
+static constexpr const char *COLOR_CURSOR_KEY = "cursor";
+static constexpr const char *COLOR_PALETTE_KEY = "color%u";
+static constexpr const char *COLOR_SWITCH_KEY = "colors%u_key";
 
-#define PALETTE_SIZE 16
+static constexpr int PALETTE_SIZE = 16;
 /* 16 color palettes in GdkRGBA format (red, green, blue, alpha)
  * Text displayed in the first 8 colors (0-7) is meek (uses thin strokes).
  * Text displayed in the second 8 colors (8-15) is bold (uses thick strokes). */
-static const char *DEFAULT_PALETTES[NUM_COLORSETS][PALETTE_SIZE] = {
+static constexpr const char *DEFAULT_PALETTES[NUM_COLORSETS][PALETTE_SIZE] = {
 		{"rgba(33,33,33,1)", "rgba(221,50,90,1)", "rgba(69,123,36,1)", "rgba(255,172,120,1)", "rgba(19,78,178,1)",
 		 "rgba(86,0,136,1)", "rgba(14,113,124,1)", "rgba(239,239,239,1)", "rgba(125,125,125,1)", "rgba(232,59,63,1)",
 		 "rgba(122,186,58,1)", "rgba(255,133,55,1)", "rgba(84,164,243,1)", "rgba(170,77,188,1)", "rgba(38,187,209,1)",
