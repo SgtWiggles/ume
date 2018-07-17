@@ -1009,9 +1009,12 @@ static void ume_set_colors() {
 		vte_terminal_set_colors(VTE_TERMINAL(term->vte), &ume.config.colors.forecolors[term->colorset],
 														&ume.config.colors.backcolors[term->colorset], ume.palette, PALETTE_SIZE);
 
-		// TODO add a way to toggle between the cursor color methods, right now we only allow the inverting method
-		// vte_terminal_set_color_cursor(VTE_TERMINAL(term->vte), &ume.config.colors.curscolors[term->colorset]);
-		vte_terminal_set_color_cursor((VteTerminal *)term->vte, nullptr);
+		if (ume.config.colors.curscolors[term->colorset].alpha == 0) {
+			vte_terminal_set_color_cursor((VteTerminal *)term->vte, nullptr);
+			vte_terminal_set_color_cursor_foreground((VteTerminal *)term->vte, nullptr);
+		} else {
+			vte_terminal_set_color_cursor(VTE_TERMINAL(term->vte), &ume.config.colors.curscolors[term->colorset]);
+		}
 	}
 
 	/* Main window opacity must be set. Otherwise vte widget will remain opaque */
@@ -1768,7 +1771,10 @@ static term_colors_t ume_load_colorsets() {
 		gdk_rgba_parse(&colors.backcolors[i], cfgtmp.get());
 
 		cfgtmp = str_ptr(ume_load_config_or(group, COLOR_CURSOR_KEY, "rgb(255,255,255)"));
-		gdk_rgba_parse(&colors.curscolors[i], cfgtmp.get());
+		if (g_strcmp0(cfgtmp.get(), "") != 0)
+			gdk_rgba_parse(&colors.curscolors[i], cfgtmp.get());
+		else
+			colors.curscolors[i] = {0, 0, 0, 0};
 
 		for (int j = 0; j < PALETTE_SIZE; ++j) {
 			char key[32];
