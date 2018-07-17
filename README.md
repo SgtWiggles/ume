@@ -107,7 +107,7 @@ Key bindings can be unbound by erasing the value and leaving it blank.
 |`set_colorset_modifier`|`5`| Modifier for changing to a colorset |
 |`icon_file`|`terminal-tango.svg`| Path to icon file |
 |`ignore_overwrite`|`false`| Ignore the overwrite prompt when closing ume. Does not overwrite the existing config file |
-|`reload_accelerator`|`5`| Accelerator to for the reload keybind |
+|`reload_modifier`|`5`| Modifier to for the reload keybind |
 |`reload_key`|`R`| Key to reload config file | 
 
 ###### Signals
