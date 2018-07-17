@@ -113,6 +113,39 @@ Key bindings can be unbound by erasing the value and leaving it blank.
 ###### Signals
 When ume receives the signal USR1 it reloads the config file. Thus one can reload all the config for all instances of ume using `killall -USR1 ume`.
 
+###### Colors
+Groups colors1 to colors6 correspond to the different color sets. 
+Colors can be set in the following forms:
+```
+rgba(255,255,255,1)
+rgb(255,255,255)
+#FFFFFF
+```
+Colors  0 to 7 are the normal text colors, while 8 to 15 are bright colors.
+
+| Config Key | Description |
+| --- | --- | 
+|`foreground`| Foreground color |
+|`background`| Background color for the terminal |
+|`cursor`| Cursor color, when the field is left blank, cursor inverts foreground and background color |
+|`color0`| Text color 0 |
+|`color1`| Text color 1 |
+|`color2`| Text color 2 |
+|`color3`| Text color 3 |
+|`color4`| Text color 4 |
+|`color5`| Text color 5 |
+|`color6`| Text color 6 |
+|`color7`| Text color 7 |
+|`color8`| Bright text color 8 |
+|`color9`| Bright text color 9 |
+|`color10`| Bright text color 10 |
+|`color11`| Bright text color 11 |
+|`color12`| Bright text color 12 |
+|`color13`| Bright text color 13 |
+|`color14`| Bright text color 14 |
+|`color15`| Bright text color 15 |
+
+
 ### Contact
   For submitting bugs or requesting new features, please use the [issue tracker](https://github.com/SgtWiggles/ume/issues). Before submitting make sure you are using the latest version of ume. If you are submitting a bug report be sure to include your operating system, a minimal way to reproduce the bug and anything else that may be relevent to the bug.
 
