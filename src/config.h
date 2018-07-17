@@ -51,45 +51,45 @@ struct config_t {
 	gchar *tab_default_title;
 	gint last_colorset;
 
-	accel_t open_url_accelerator;
+	accel_t open_url_modifier;
 
-	accel_t add_tab_accelerator;
+	accel_t add_tab_modifier;
 	keycode_t add_tab_key;
-	accel_t del_tab_accelerator;
+	accel_t del_tab_modifier;
 	keycode_t del_tab_key;
 
-	accel_t switch_tab_accelerator;
-	accel_t move_tab_accelerator;
+	accel_t switch_tab_modifier;
+	accel_t move_tab_modifier;
 	gint prev_tab_key;
 	gint next_tab_key;
 
-	accel_t copy_accelerator;
+	accel_t copy_modifier;
 	gint copy_key;
 	gint paste_key;
 
-	accel_t scrollbar_accelerator;
+	accel_t scrollbar_modifier;
 	gint scrollbar_key;
 	gint scroll_up_key;
 	gint scroll_down_key;
 	gint page_up_key;
 	gint page_down_key;
 
-	accel_t set_tab_name_accelerator;
+	accel_t set_tab_name_modifier;
 	gint set_tab_name_key;
 
-	accel_t search_accelerator;
+	accel_t search_modifier;
 	gint search_key;
 
-	accel_t reload_accelerator;
+	accel_t reload_modifier;
 	keycode_t reload_key;
 
 	gint fullscreen_key;
 
-	accel_t font_size_accelerator;
+	accel_t font_size_modifier;
 	gint increase_font_size_key;
 	gint decrease_font_size_key;
 
-	accel_t set_colorset_accelerator;
+	accel_t set_colorset_modifier;
 	std::array<gint, NUM_COLORSETS> set_colorset_keys;
 
 	VteRegex *http_vteregexp, *mail_vteregexp;
@@ -117,37 +117,37 @@ struct config_t {
  *  while ((pos = str.find(sep)) != std::string::npos) {
  *    tok = str.substr(0, pos);
  *    if (tok == "SHIFT") {
- *      bind.accelerator |= GDK_SHIFT_MASK;
+ *      bind.modifier |= GDK_SHIFT_MASK;
  *    } else if (tok == "LOCK" || tok == "CAPS") {
- *      bind.accelerator |= GDK_LOCK_MASK;
+ *      bind.modifier |= GDK_LOCK_MASK;
  *    } else if (tok == "CONTROL" || tok == "CTRL") {
- *      bind.accelerator |= GDK_CONTROL_MASK;
+ *      bind.modifier |= GDK_CONTROL_MASK;
  *    } else if (tok == "MOD1" || tok == "ALT") {
- *      bind.accelerator |= GDK_MOD1_MASK;
+ *      bind.modifier |= GDK_MOD1_MASK;
  *    } else if (tok == "MOD2") {
- *      bind.accelerator |= GDK_MOD2_MASK;
+ *      bind.modifier |= GDK_MOD2_MASK;
  *    } else if (tok == "MOD3") {
- *      bind.accelerator |= GDK_MOD3_MASK;
+ *      bind.modifier |= GDK_MOD3_MASK;
  *    } else if (tok == "MOD4") {
- *      bind.accelerator |= GDK_MOD4_MASK;
+ *      bind.modifier |= GDK_MOD4_MASK;
  *    } else if (tok == "MOD5") {
- *      bind.accelerator |= GDK_MOD5_MASK;
+ *      bind.modifier |= GDK_MOD5_MASK;
  *    } else if (tok == "BUTTON1") {
- *      bind.accelerator |= GDK_BUTTON1_MASK;
+ *      bind.modifier |= GDK_BUTTON1_MASK;
  *    } else if (tok == "BUTTON2") {
- *      bind.accelerator |= GDK_BUTTON2_MASK;
+ *      bind.modifier |= GDK_BUTTON2_MASK;
  *    } else if (tok == "BUTTON3") {
- *      bind.accelerator |= GDK_BUTTON3_MASK;
+ *      bind.modifier |= GDK_BUTTON3_MASK;
  *    } else if (tok == "BUTTON4") {
- *      bind.accelerator |= GDK_BUTTON4_MASK;
+ *      bind.modifier |= GDK_BUTTON4_MASK;
  *    } else if (tok == "BUTTON5") {
- *      bind.accelerator |= GDK_BUTTON5_MASK;
+ *      bind.modifier |= GDK_BUTTON5_MASK;
  *    } else if (tok == "SUPER") {
- *      bind.accelerator |= GDK_SUPER_MASK;
+ *      bind.modifier |= GDK_SUPER_MASK;
  *    } else if (tok == "HYPER") {
- *      bind.accelerator |= GDK_HYPER_MASK;
+ *      bind.modifier |= GDK_HYPER_MASK;
  *    } else if (tok == "META") {
- *      bind.accelerator |= GDK_META_MASK;
+ *      bind.modifier |= GDK_META_MASK;
  *    } else if (bind.key == GDK_KEY_VoidSymbol) {
  *      bind.key = gdk_keyval_from_name(tok.c_str());
  *    } else {

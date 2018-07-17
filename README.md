@@ -39,14 +39,14 @@ Also requires a C++17 compliant compiler. So far ume has been compiled with gcc 
   Use `CMAKE_BUILD_TYPE=Debug` if you need debug symbols. Default build is "Release".
   
 ### User Guide
-###### Accelerators
-  Accelerators are modifiers for keybinds, such as ctrl and shift. 
+###### Modifiers
+  Modifiers are the modifier keys, such as control and shift, which are applied to key bindings.
   As of right now, they are represented as integers in the config file.
   The following values can be added together for different modifiers:  
   Shift(1), Cps-Lock(2), Ctrl(4), Alt(8)  
-  For example, to get Ctrl+Shift, the accelerator would be 5
+  For example, to get Ctrl+Shift, the modifier would be 5
   
-Accelerators can be set to any mask value from the GdkModifierType in gdktypes.h. For reference look at: https://github.com/GNOME/gtk/blob/master/gdk/gdktypes.h
+Modifiers can be set to any mask value from the GdkModifierType in gdktypes.h. For reference look at: https://github.com/GNOME/gtk/blob/master/gdk/gdktypes.h
 
 ###### Configuration Settings
 Key bindings can be unbound by erasing the field and leaving it blank.
@@ -72,39 +72,39 @@ Key bindings can be unbound by erasing the field and leaving it blank.
 |`allow_bold`|`Yes`| Allow displaying bolded characters |
 |`cursor_type`|`block`| Cursor type when inputting numbers in the gtk client |
 |`word_chars`|`-,./?%&#_~:`| Characters that define breaks between words |
-|`add_tab_accelerator`|`5`| Accelerator for creating tabs |
-|`del_tab_accelerator`|`5`| Accelerator for deleting tabs |
-|`switch_tab_accelerator`|`4`| Accelerator for switching tabs |
-|`move_tab_accelerator`|`5`| Accelerator for moving tabs |
-|`copy_accelerator`|`5`| Accelerator for copying |
-|`scrollbar_accelerator`|`5`| Accelerator for toggling the scrollbar |
-|`open_url_accelerator`|`5`| Accelerator for opening a url |
-|`font_size_accelerator`|`5`| Accelerator for adjusting font size |
-|`set_tab_name_accelerator`|`5`| Accelerator for setting the tab name |
-|`search_accelerator`|`5`| Accelerator for opening the search menu |
-|`add_tab_key`|`T`| Key to create a new tab, uses `add_tab_accelerator` |
-|`del_tab_key`|`W`| Key to close a tab, uses `del_tab_accelerator` |
-|`prev_tab_key`|`Left`| Key to switch to the previous tab, uses `switch_tab_accelerator` |
-|`next_tab_key`|`Right`| Key to switch to the next tab, uses `switch_tab_accelerator` |
-|`copy_key`|`C`| Key to copy selection, uses `copy_accelerator` |
-|`paste_key`|`V`| Key to paste, uses `copy_accelerator` |
-|`scrollbar_key`|`S`| Key to toggle the scroll bar, uses `scrollbar_accelerator` |
-|`scroll_up_key`|`K`| Key to scroll up, uses `scrollbar_accelerator` |
-|`scroll_down_key`|`J`| Key to scroll down, uses `scrollbar_accelerator` |
-|`page_up_key`|`U`| Key to page down, uses `scrollbar_accelerator` |
-|`page_down_key`|`D`| Key to page up, uses `scrollbar_accelerator` |
-|`set_tab_name_key`|`N`| Key to set the current tab name, uses `set_tab_name_accelerator` |
-|`search_key`|`F`| Key to open search menu, uses `search_accelerator` |
-|`increase_font_size_key`|`plus`| Key to increase font size, uses `font_size_accelerator` |
-|`decrease_font_size_key`|`minus`| Key to decrease font size, uses `font_size_accelerator` |
-|`fullscreen_key`|`F11`| Key to make the terminal fullscreen, doesn't have an accelerator |
-|`colors1_key`|`F1`| Key to switch to the 1st colorset, uses `set_colorset_accelerator` |
-|`colors2_key`|`F2`| Key to switch to the 2nd colorset, uses `set_colorset_accelerator` |
-|`colors3_key`|`F3`| Key to switch to the 3rd colorset, uses `set_colorset_accelerator` |
-|`colors4_key`|`F4`| Key to switch to the 4th colorset, uses `set_colorset_accelerator` |
-|`colors5_key`|`F5`| Key to switch to the 5th colorset, uses `set_colorset_accelerator` |
-|`colors6_key`|`F6`| Key to switch to the 6th colorset, uses `set_colorset_accelerator` |
-|`set_colorset_accelerator`|`5`| Accelerator for changing to a colorset |
+|`add_tab_modifier`|`5`| Modifier for creating tabs |
+|`del_tab_modifier`|`5`| Modifier for deleting tabs |
+|`switch_tab_modifier`|`4`| Modifier for switching tabs |
+|`move_tab_modifier`|`5`| Modifier for moving tabs |
+|`copy_modifier`|`5`| Modifier for copying |
+|`scrollbar_modifier`|`5`| Modifier for toggling the scrollbar |
+|`open_url_modifier`|`5`| Modifier for opening a url |
+|`font_size_modifier`|`5`| Modifier for adjusting font size |
+|`set_tab_name_modifier`|`5`| Modifier for setting the tab name |
+|`search_modifier`|`5`| Modifier for opening the search menu |
+|`add_tab_key`|`T`| Key to create a new tab, uses `add_tab_modifier` |
+|`del_tab_key`|`W`| Key to close a tab, uses `del_tab_modifier` |
+|`prev_tab_key`|`Left`| Key to switch to the previous tab, uses `switch_tab_modifier` |
+|`next_tab_key`|`Right`| Key to switch to the next tab, uses `switch_tab_modifier` |
+|`copy_key`|`C`| Key to copy selection, uses `copy_modifier` |
+|`paste_key`|`V`| Key to paste, uses `copy_modifier` |
+|`scrollbar_key`|`S`| Key to toggle the scroll bar, uses `scrollbar_modifier` |
+|`scroll_up_key`|`K`| Key to scroll up, uses `scrollbar_modifier` |
+|`scroll_down_key`|`J`| Key to scroll down, uses `scrollbar_modifier` |
+|`page_up_key`|`U`| Key to page down, uses `scrollbar_modifier` |
+|`page_down_key`|`D`| Key to page up, uses `scrollbar_modifier` |
+|`set_tab_name_key`|`N`| Key to set the current tab name, uses `set_tab_name_modifier` |
+|`search_key`|`F`| Key to open search menu, uses `search_modifier` |
+|`increase_font_size_key`|`plus`| Key to increase font size, uses `font_size_modifier` |
+|`decrease_font_size_key`|`minus`| Key to decrease font size, uses `font_size_modifier` |
+|`fullscreen_key`|`F11`| Key to make the terminal fullscreen, doesn't have an modifier |
+|`colors1_key`|`F1`| Key to switch to the 1st colorset, uses `set_colorset_modifier` |
+|`colors2_key`|`F2`| Key to switch to the 2nd colorset, uses `set_colorset_modifier` |
+|`colors3_key`|`F3`| Key to switch to the 3rd colorset, uses `set_colorset_modifier` |
+|`colors4_key`|`F4`| Key to switch to the 4th colorset, uses `set_colorset_modifier` |
+|`colors5_key`|`F5`| Key to switch to the 5th colorset, uses `set_colorset_modifier` |
+|`colors6_key`|`F6`| Key to switch to the 6th colorset, uses `set_colorset_modifier` |
+|`set_colorset_modifier`|`5`| Modifier for changing to a colorset |
 |`icon_file`|`terminal-tango.svg`| Path to icon file |
 |`reload_config_on_modify`|`false`| If the config file gets modified while running, reload. Warning sometimes when overwriting the file, ume fails to read it and the config gets replaced with the default config. Make sure to have a back up of the config file when using this setting. |
 |`ignore_overwrite`|`false`| Ignore the overwrite prompt when closing ume. Does not overwrite the existing config file |
@@ -115,7 +115,7 @@ Key bindings can be unbound by erasing the field and leaving it blank.
 
 ### TODO
 - [ ] Clean up code base  
-- [ ] Better way to configure modifier keys (replace accelerator numbers with strings)  
+- [ ] Better way to configure modifier keys (replace modifier numbers with strings)  
 - [ ] Change yes/no in config file to true false values  
 - [ ] Update [INSTALL](INSTALL)  
 - [ ] Reload settings keybind

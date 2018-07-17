@@ -383,11 +383,11 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	/* Use keycodes instead of keyvals. With keyvals, key bindings work only in US/ISO8859-1 and similar locales */
 	guint keycode = event->hardware_keycode;
 
-	if ((event->state & ume.config.add_tab_accelerator) == ume.config.add_tab_accelerator &&
+	if ((event->state & ume.config.add_tab_modifier) == ume.config.add_tab_modifier &&
 			keycode == ume_tokeycode(ume.config.add_tab_key)) {
 		ume_add_tab();
 		return true;
-	} else if ((event->state & ume.config.del_tab_accelerator) == ume.config.del_tab_accelerator &&
+	} else if ((event->state & ume.config.del_tab_modifier) == ume.config.del_tab_modifier &&
 						 keycode == ume_tokeycode(ume.config.del_tab_key)) {
 		/* Delete current tab */
 		ume_close_tab_callback(NULL, NULL);
@@ -395,12 +395,12 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	}
 
 	/* Switch tab keybinding pressed (numbers or next/prev) */
-	/* In cases when the user configured accelerators like these ones:
-		 switch_tab_accelerator=4  for ctrl+next[prev]_tab_key
-		 move_tab_accelerator=5  for ctrl+shift+next[prev]_tab_key
+	/* In cases when the user configured modifiers like these ones:
+		 switch_tab_modifier=4  for ctrl+next[prev]_tab_key
+		 move_tab_modifier=5  for ctrl+shift+next[prev]_tab_key
 		 move never works, because switch will be processed first, so it needs to be fixed with the following condition */
-	if (((event->state & ume.config.switch_tab_accelerator) == ume.config.switch_tab_accelerator) &&
-			((event->state & ume.config.move_tab_accelerator) != ume.config.move_tab_accelerator)) {
+	if (((event->state & ume.config.switch_tab_modifier) == ume.config.switch_tab_modifier) &&
+			((event->state & ume.config.move_tab_modifier) != ume.config.move_tab_modifier)) {
 		if ((keycode >= ume_tokeycode(GDK_KEY_1)) && (keycode <= ume_tokeycode(GDK_KEY_9))) {
 
 			/* User has explicitly disabled this branch, make sure to propagate the event */
@@ -445,7 +445,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 		}
 	}
 
-	if ((event->state & ume.config.move_tab_accelerator) == ume.config.move_tab_accelerator) {
+	if ((event->state & ume.config.move_tab_modifier) == ume.config.move_tab_modifier) {
 		/* Move tab keybinding pressed */
 		if (ume_tokeycode(ume.config.prev_tab_key) == keycode) {
 			ume_move_tab(BACKWARDS);
@@ -458,7 +458,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	}
 
 	/* Copy/paste keybinding pressed */
-	if ((event->state & ume.config.copy_accelerator) == ume.config.copy_accelerator) {
+	if ((event->state & ume.config.copy_modifier) == ume.config.copy_modifier) {
 		if (keycode == ume_tokeycode(ume.config.copy_key)) {
 			ume_copy(NULL, NULL);
 			return true;
@@ -469,7 +469,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	}
 
 	/* Show scrollbar keybinding pressed */
-	if ((event->state & ume.config.scrollbar_accelerator) == ume.config.scrollbar_accelerator) {
+	if ((event->state & ume.config.scrollbar_modifier) == ume.config.scrollbar_modifier) {
 		if (keycode == ume_tokeycode(ume.config.scrollbar_key)) {
 			ume_show_scrollbar(NULL, NULL);
 			return true;
@@ -477,7 +477,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	}
 
 	/* Set tab name keybinding pressed */
-	if ((event->state & ume.config.set_tab_name_accelerator) == ume.config.set_tab_name_accelerator) {
+	if ((event->state & ume.config.set_tab_name_modifier) == ume.config.set_tab_name_modifier) {
 		if (keycode == ume_tokeycode(ume.config.set_tab_name_key)) {
 			ume_set_name_dialog(NULL, NULL);
 			return true;
@@ -485,7 +485,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	}
 
 	/* Search keybinding pressed */
-	if ((event->state & ume.config.search_accelerator) == ume.config.search_accelerator) {
+	if ((event->state & ume.config.search_modifier) == ume.config.search_modifier) {
 		if (keycode == ume_tokeycode(ume.config.search_key)) {
 			ume_search_dialog(NULL, NULL);
 			return true;
@@ -493,7 +493,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	}
 
 	/* Increase/decrease font size keybinding pressed */
-	if ((event->state & ume.config.font_size_accelerator) == ume.config.font_size_accelerator) {
+	if ((event->state & ume.config.font_size_modifier) == ume.config.font_size_modifier) {
 		if (keycode == ume_tokeycode(ume.config.increase_font_size_key)) {
 			ume_increase_font(NULL, NULL);
 			return true;
@@ -504,7 +504,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	}
 
 	// Scroll up and down with ctrl j, k
-	if ((event->state & ume.config.scrollbar_accelerator) == ume.config.scrollbar_accelerator) {
+	if ((event->state & ume.config.scrollbar_modifier) == ume.config.scrollbar_modifier) {
 		gint page;
 		struct terminal *term;
 		page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
@@ -537,7 +537,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 		return true;
 	}
 
-	if ((event->state & ume.config.reload_accelerator) == ume.config.reload_accelerator) {
+	if ((event->state & ume.config.reload_modifier) == ume.config.reload_modifier) {
 		if (keycode == ume_tokeycode(ume.config.reload_key)) {
 			ume_reload_config_file();
 			ume_set_colorset(ume.config.last_colorset - 1);
@@ -546,7 +546,7 @@ static gboolean ume_key_press(GtkWidget *widget, GdkEventKey *event, gpointer us
 	}
 
 	/* Change in colorset */
-	if ((event->state & ume.config.set_colorset_accelerator) == ume.config.set_colorset_accelerator) {
+	if ((event->state & ume.config.set_colorset_modifier) == ume.config.set_colorset_modifier) {
 		int i;
 		for (i = 0; i < NUM_COLORSETS; i++) {
 			if (keycode == ume_tokeycode(ume.config.set_colorset_keys[i])) {
@@ -572,10 +572,9 @@ static gboolean ume_button_press(GtkWidget *widget, GdkEventButton *button_event
 	/* Find out if cursor it's over a matched expression...*/
 	ume.current_match = vte_terminal_match_check_event(VTE_TERMINAL(term->vte), (GdkEvent *)button_event, &tag);
 
-	/* Left button with accelerator: open the URL if any */
+	/* Left button with modifier: open the URL if any */
 	if (button_event->button == 1 &&
-			((button_event->state & ume.config.open_url_accelerator) == ume.config.open_url_accelerator) &&
-			ume.current_match) {
+			((button_event->state & ume.config.open_url_modifier) == ume.config.open_url_modifier) && ume.current_match) {
 
 		ume_open_url(NULL, NULL);
 		return true;
@@ -1869,43 +1868,41 @@ static void ume_reload_config_file() {
 
 	ume.config.word_chars = ume_load_config_or(cfg_group, "word_chars", DEFAULT_WORD_CHARS);
 
-	// TODO accelerator better strings or merge with keybinds!
+	// TODO modifier better strings or merge with keybinds!
 
 	// ----- Begin of keybinds -----
-	// TODO make a keybind struct with accelerator and key bundled together.
-	ume.config.add_tab_accelerator = ume_load_config_or(cfg_group, "add_tab_accelerator", DEFAULT_ADD_TAB_ACCELERATOR);
+	// TODO make a keybind struct with modifier and key bundled together.
+	ume.config.add_tab_modifier = ume_load_config_or(cfg_group, "add_tab_modifier", DEFAULT_ADD_TAB_MODIFIER);
 	ume.config.add_tab_key = ume_load_keybind_or(cfg_group, "add_tab_key", DEFAULT_ADD_TAB_KEY);
 
-	ume.config.del_tab_accelerator = ume_load_config_or(cfg_group, "del_tab_accelerator", DEFAULT_DEL_TAB_ACCELERATOR);
+	ume.config.del_tab_modifier = ume_load_config_or(cfg_group, "del_tab_modifier", DEFAULT_DEL_TAB_MODIFIER);
 	ume.config.del_tab_key = ume_load_keybind_or(cfg_group, "del_tab_key", DEFAULT_DEL_TAB_KEY);
 
-	ume.config.move_tab_accelerator = ume_load_config_or(cfg_group, "move_tab_accelerator", DEFAULT_MOVE_TAB_ACCELERATOR);
-	ume.config.switch_tab_accelerator =
-			ume_load_config_or<gint>(cfg_group, "switch_tab_accelerator", DEFAULT_SWITCH_TAB_ACCELERATOR);
+	ume.config.move_tab_modifier = ume_load_config_or(cfg_group, "move_tab_modifier", DEFAULT_MOVE_TAB_MODIFIER);
+	ume.config.switch_tab_modifier =
+			ume_load_config_or<gint>(cfg_group, "switch_tab_modifier", DEFAULT_SWITCH_TAB_MODIFIER);
 	ume.config.prev_tab_key = ume_load_keybind_or(cfg_group, "prev_tab_key", DEFAULT_PREV_TAB_KEY);
 	ume.config.next_tab_key = ume_load_keybind_or(cfg_group, "next_tab_key", DEFAULT_NEXT_TAB_KEY);
 
-	ume.config.copy_accelerator = ume_load_config_or(cfg_group, "copy_accelerator", DEFAULT_COPY_ACCELERATOR);
+	ume.config.copy_modifier = ume_load_config_or(cfg_group, "copy_modifier", DEFAULT_COPY_MODIFIER);
 	ume.config.copy_key = ume_load_keybind_or(cfg_group, "copy_key", DEFAULT_COPY_KEY);
 	ume.config.paste_key = ume_load_keybind_or(cfg_group, "paste_key", DEFAULT_PASTE_KEY);
 
-	ume.config.scrollbar_accelerator =
-			ume_load_config_or(cfg_group, "scrollbar_accelerator", DEFAULT_SCROLLBAR_ACCELERATOR);
+	ume.config.scrollbar_modifier = ume_load_config_or(cfg_group, "scrollbar_modifier", DEFAULT_SCROLLBAR_MODIFIER);
 	ume.config.scrollbar_key = ume_load_keybind_or(cfg_group, "scrollbar_key", DEFAULT_SCROLLBAR_KEY);
 	ume.config.scroll_up_key = ume_load_keybind_or(cfg_group, "scroll_up_key", DEFAULT_SCROLL_UP_KEY);
 	ume.config.scroll_down_key = ume_load_keybind_or(cfg_group, "scroll_down_key", DEFAULT_SCROLL_DOWN_KEY);
 	ume.config.page_up_key = ume_load_keybind_or(cfg_group, "page_up_key", DEFAULT_PAGE_UP_KEY);
 	ume.config.page_down_key = ume_load_keybind_or(cfg_group, "page_down_key", DEFAULT_PAGE_DOWN_KEY);
 
-	ume.config.set_tab_name_accelerator =
-			ume_load_config_or(cfg_group, "set_tab_name_accelerator", DEFAULT_SET_TAB_NAME_ACCELERATOR);
+	ume.config.set_tab_name_modifier =
+			ume_load_config_or(cfg_group, "set_tab_name_modifier", DEFAULT_SET_TAB_NAME_MODIFIER);
 	ume.config.set_tab_name_key = ume_load_keybind_or(cfg_group, "set_tab_name_key", DEFAULT_SET_TAB_NAME_KEY);
 
-	ume.config.search_accelerator = ume_load_config_or(cfg_group, "search_accelerator", DEFAULT_SEARCH_ACCELERATOR);
+	ume.config.search_modifier = ume_load_config_or(cfg_group, "search_modifier", DEFAULT_SEARCH_MODIFIER);
 	ume.config.search_key = ume_load_keybind_or(cfg_group, "search_key", DEFAULT_SEARCH_KEY);
 
-	ume.config.font_size_accelerator =
-			ume_load_config_or(cfg_group, "font_size_accelerator", DEFAULT_FONT_SIZE_ACCELERATOR);
+	ume.config.font_size_modifier = ume_load_config_or(cfg_group, "font_size_modifier", DEFAULT_FONT_SIZE_MODIFIER);
 	ume.config.increase_font_size_key =
 			ume_load_keybind_or(cfg_group, "increase_font_size_key", DEFAULT_INCREASE_FONT_SIZE_KEY);
 	ume.config.decrease_font_size_key =
@@ -1913,18 +1910,18 @@ static void ume_reload_config_file() {
 
 	ume.config.fullscreen_key = ume_load_keybind_or(cfg_group, "fullscreen_key", DEFAULT_FULLSCREEN_KEY);
 
-	ume.config.reload_accelerator = ume_load_config_or(cfg_group, "reload_accelerator", DEFAULT_RELOAD_ACCELERATOR);
+	ume.config.reload_modifier = ume_load_config_or(cfg_group, "reload_modifier", DEFAULT_RELOAD_MODIFIER);
 	ume.config.reload_key = ume_load_keybind_or(cfg_group, "reload_key", DEFAULT_RELOAD_KEY);
 
-	ume.config.set_colorset_accelerator =
-			ume_load_config_or(cfg_group, "set_colorset_accelerator", DEFAULT_SELECT_COLORSET_ACCELERATOR);
+	ume.config.set_colorset_modifier =
+			ume_load_config_or(cfg_group, "set_colorset_modifier", DEFAULT_SELECT_COLORSET_MODIFIER);
 	for (int i = 0; i < NUM_COLORSETS; ++i) {
 		char key_name[32];
 		sprintf(key_name, COLOR_SWITCH_KEY, i + 1);
 		ume.config.set_colorset_keys[i] = ume_load_keybind_or(cfg_group, key_name, cs_keys[i]);
 	}
 
-	ume.config.open_url_accelerator = ume_load_config_or(cfg_group, "open_url_accelerator", DEFAULT_OPEN_URL_ACCELERATOR);
+	ume.config.open_url_modifier = ume_load_config_or(cfg_group, "open_url_modifier", DEFAULT_OPEN_URL_MODIFIER);
 
 	// ------ End of keybindings -----
 	ume.config.icon = ume_load_config_or(cfg_group, "icon_file", ICON_FILE);
