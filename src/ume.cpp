@@ -163,7 +163,6 @@ const char cfg_group[] = "ume";
 
 static GQuark term_data_id = 0;
 
-// Inline this function?
 static inline struct terminal *ume_get_page_term(decltype(ume) &term, int page_idx) {
 	SAY("Fetching idx %d, with notebook %p", page_idx, term.notebook);
 	auto nth_page = gtk_notebook_get_nth_page((GtkNotebook *)term.notebook, page_idx);
@@ -607,14 +606,6 @@ static gboolean ume_focus_in(GtkWidget *widget, GdkEvent *event, void *data) {
 	if (event->type != GDK_FOCUS_CHANGE)
 		return false;
 	SAY("Focus in event");
-
-	/* Ignore first focus event */
-	/*
-	 *if (ume.first_focus) {
-	 *  ume.first_focus = false;
-	 *  return false;
-	 *}
-	 */
 
 	if (!ume.focused) {
 		ume.focused = true;
