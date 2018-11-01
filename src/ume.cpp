@@ -54,10 +54,10 @@
 constexpr bool str_equal(char const *a, char const *b) {
 	return *a == *b && (*a == '\0' || str_equal(a + 1, b + 1));
 }
-template <class... Args> inline void say_impl(const char *caller, const char *format, Args &&... args) {
+template <class... Args> inline void say_impl(size_t line, const char *caller, const char *format, Args &&... args) {
 	if constexpr (str_equal(BUILDTYPE, "Debug")) {
 		fprintf(stderr, "[%d] ", getpid());
-		fprintf(stderr, "[%s] ", caller);
+		fprintf(stderr, "[%s:%zu] ", caller, line);
 		if (format)
 			fprintf(stderr, format, args...);
 		fputc('\n', stderr);
@@ -65,7 +65,7 @@ template <class... Args> inline void say_impl(const char *caller, const char *fo
 	}
 }
 
-#define SAY(format, ...) say_impl(__FUNCTION__, format, ##__VA_ARGS__)
+#define SAY(format, ...) say_impl(__LINE__, __FUNCTION__, format, ##__VA_ARGS__)
 
 #define HIG_DIALOG_CSS                                                                                                 \
 	"* {\n"                                                                                                              \
@@ -163,10 +163,14 @@ const char cfg_group[] = "ume";
 
 static GQuark term_data_id = 0;
 
-// Inline function this.
-#define ume_get_page_term(ume, page_idx)                                                                               \
-	(struct terminal *)g_object_get_qdata(G_OBJECT(gtk_notebook_get_nth_page((GtkNotebook *)ume.notebook, page_idx)),    \
-																				term_data_id);
+// Inline this function?
+static inline struct terminal *ume_get_page_term(decltype(ume) &term, int page_idx) {
+	SAY("Fetching idx %d, with notebook %p", page_idx, term.notebook);
+	auto nth_page = gtk_notebook_get_nth_page((GtkNotebook *)term.notebook, page_idx);
+	SAY("nth page is: %p", nth_page);
+	auto obj = G_OBJECT(nth_page);
+	return (struct terminal *)g_object_get_qdata(obj, term_data_id);
+}
 
 #define ume_set_page_term(ume, page_idx, term)                                                                         \
 	g_object_set_qdata_full(G_OBJECT(gtk_notebook_get_nth_page((GtkNotebook *)ume.notebook, page_idx)), term_data_id,    \
@@ -729,10 +733,18 @@ static void ume_decrease_font(GtkWidget *widget, void *data) {
 static void ume_child_exited(GtkWidget *widget, void *data) {
 	gint page = gtk_notebook_page_num(GTK_NOTEBOOK(ume.notebook), gtk_widget_get_parent(widget));
 	gint npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
+
+	SAY("Fetching page term:");
 	struct terminal *term = ume_get_page_term(ume, page);
+	if (!term) {
+		SAY("Page does not exist, skipping child.");
+		return;
+	}
 
 	/* Only write configuration to disk if it's the last tab */
+	SAY("ume_config_done call");
 	if (npages == 1) {
+		SAY("npages == 1 inner call");
 		ume_config_done(false);
 	}
 
@@ -742,17 +754,20 @@ static void ume_child_exited(GtkWidget *widget, void *data) {
 	}
 
 	/* Child should be automatically reaped because we don't use G_SPAWN_DO_NOT_REAP_CHILD flag */
+	SAY("Closing term->pid");
 	g_spawn_close_pid(term->pid);
 
+	SAY("deleting tabs");
 	ume_del_tab(page);
 
+	SAY("getting pages and finalize destroying");
 	npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
 	if (npages == 0)
 		ume_destroy();
+	SAY("Finished!");
 }
 
 static void ume_eof(GtkWidget *widget, void *data) {
-
 	SAY("Got EOF signal");
 
 	gint npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook));
@@ -1200,7 +1215,7 @@ static void ume_color_dialog(GtkWidget *widget, void *data) {
 }
 
 // Fading
-static void ume_fade_out() { // NOTE:  maybe we can make this fade between color switching
+static void ume_fade_out() {
 	gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(ume.notebook));
 	struct terminal *term = ume_get_page_term(ume, page);
 
@@ -2266,18 +2281,19 @@ static void ume_init_popup() {
 }
 
 static void ume_destroy() {
+	SAY("Destroying ume.");
 	/* Delete all existing tabs */
 	while (gtk_notebook_get_n_pages(GTK_NOTEBOOK(ume.notebook)) > 0) {
 		ume_del_tab(-1);
 	}
+	SAY("Deleted all tabs");
 
 	g_key_file_free(ume.cfg_file);
-
 	pango_font_description_free(ume.config.font);
-
 	free(ume.configfile);
 
 	gtk_main_quit();
+	SAY("Destroyed ume.");
 }
 
 static void ume_set_size(void) {
@@ -2904,6 +2920,7 @@ int main(int argc, char **argv) {
 
 	ume_sanitize_working_directory();
 
+	SAY("Ume loaded!");
 	gtk_main();
 
 	return 0;
