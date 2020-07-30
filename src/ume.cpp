@@ -1122,7 +1122,7 @@ static GtkWidget *ume_create_color_dialog(GtkWidget *widget, void *data) {
 	/* Opacity control */
 	GtkWidget *hbox_opacity = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
 	GtkAdjustment *spinner_adj =
-			gtk_adjustment_new((ume.config.colors.backcolors[term->colorset].alpha) * 100, 0.0, 99.0, 1.0, 5.0, 0);
+			gtk_adjustment_new((ume.config.colors.backcolors[term->colorset].alpha) * 100, 0.0, 100.0, 1.0, 5.0, 0);
 	GtkWidget *opacity_spin = gtk_spin_button_new(GTK_ADJUSTMENT(spinner_adj), 1.0, 0);
 	GtkWidget *opacity_label = gtk_label_new("Opacity level (%)");
 
